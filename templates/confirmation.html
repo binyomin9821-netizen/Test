@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Application Submitted</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="page">
+    <h1>Application Submitted</h1>
+    <div class="card">
+      <p>Thank you, {{ application.full_name }}. Your application to
+        <strong>{{ application.property_name }}</strong> has been received.</p>
+      <p>Its current status is:
+        <span class="status pending">{{ application.status }}</span>
+      </p>
+      <p>Application reference number: #{{ application.id }}</p>
+    </div>
+    <a class="button" href="{{ url_for('apply') }}">Submit another application</a>
+  </div>
+</body>
+</html>

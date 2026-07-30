@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Application #{{ application.id }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <a href="{{ url_for('admin_dashboard') }}">&larr; Back to all applications</a>
+    <a href="{{ url_for('admin_logout') }}">Log out</a>
+  </div>
+  <div class="page">
+    <h1>Application #{{ application.id }}</h1>
+    <p class="subtitle">
+      Status: <span class="status {{ application.status|lower }}">{{ application.status }}</span>
+    </p>
+
+    <div class="card">
+      <dl class="detail-grid">
+        <dt>Property</dt>
+        <dd>{{ application.property_name }} ({{ application.property_address }})</dd>
+
+        <dt>Full Name</dt>
+        <dd>{{ application.full_name }}</dd>
+
+        <dt>Phone</dt>
+        <dd>{{ application.phone }}</dd>
+
+        <dt>Email</dt>
+        <dd>{{ application.email }}</dd>
+
+        <dt>Current Address</dt>
+        <dd>{{ application.current_address }}</dd>
+
+        <dt>Marital Status</dt>
+        <dd>{{ application.marital_status or '—' }}</dd>
+
+        <dt>Number of Children</dt>
+        <dd>{{ application.number_of_children if application.number_of_children is not none else '—' }}</dd>
+
+        <dt>Submitted</dt>
+        <dd>{{ application.created_at }}</dd>
+
+        <dt>Decision Date</dt>
+        <dd>{{ application.decision_date or '—' }}</dd>
+      </dl>
+    </div>
+
+    {% if application.status == 'Pending' %}
+      <div class="card">
+        <form method="post" action="{{ url_for('admin_decide', application_id=application.id) }}" style="display:inline;">
+          <input type="hidden" name="decision" value="Approved">
+          <button type="submit">Approve</button>
+        </form>
+        <form method="post" action="{{ url_for('admin_decide', application_id=application.id) }}" style="display:inline;">
+          <input type="hidden" name="decision" value="Denied">
+          <button type="submit" class="deny">Deny</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

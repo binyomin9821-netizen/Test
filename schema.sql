@@ -1,34 +1,51 @@
--- Reference schema (Postgres/MySQL-flavored). SQLAlchemy creates this
--- automatically via db.create_all() when the app starts, using the
--- DATABASE_URL you configure; this file is for reference / manual setup
--- against a production SQL database.
+-- Database structure for the tenant application pilot.
+-- This file is read once by seed.py to create the database file.
 
+-- One row per property/building in the portfolio.
+CREATE TABLE IF NOT EXISTS properties (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    name                    TEXT NOT NULL,
+    address                 TEXT NOT NULL,
+    property_manager_email  TEXT
+    -- property_manager_email isn't used yet. Later, this is the address
+    -- automated emails to that building's manager will be sent to.
+);
+
+-- One row per tenant application.
 CREATE TABLE IF NOT EXISTS applications (
-    id                  SERIAL PRIMARY KEY,
-    full_name           VARCHAR(200) NOT NULL,
-    phone               VARCHAR(50)  NOT NULL,
-    email               VARCHAR(200) NOT NULL,
-    current_address     VARCHAR(400) NOT NULL,
-    marital_status      VARCHAR(50),
-    number_of_children  INTEGER,
-    status              VARCHAR(20) NOT NULL DEFAULT 'pending',
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ocr_raw_text        TEXT,
-    ocr_needs_review    BOOLEAN DEFAULT FALSE
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    property_id             INTEGER NOT NULL REFERENCES properties(id),
+
+    -- Part 1: basic info
+    full_name               TEXT NOT NULL,
+    phone                   TEXT NOT NULL,
+    email                   TEXT NOT NULL,
+    current_address         TEXT NOT NULL,
+
+    -- Part 2: household info
+    marital_status           TEXT,
+    number_of_children       INTEGER,
+
+    -- Decision-maker workflow
+    status                  TEXT NOT NULL DEFAULT 'Pending',   -- Pending / Approved / Denied
+    created_at              TEXT NOT NULL DEFAULT (datetime('now')),
+    decision_date           TEXT,
+
+    -- Reserved for future stages (unused for now, columns exist so nothing
+    -- needs to change later): a photo of the handwritten paper form, the
+    -- text pulled out of that photo, and the current status of the
+    -- in-person home inspection.
+    paper_form_photo_path    TEXT,
+    ocr_extracted_text       TEXT,
+    inspection_status        TEXT
 );
 
-CREATE TABLE IF NOT EXISTS users (
-    id              SERIAL PRIMARY KEY,
-    username        VARCHAR(120) UNIQUE NOT NULL,
-    password_hash   VARCHAR(255) NOT NULL,
-    role            VARCHAR(20) NOT NULL DEFAULT 'inspector'
-);
-
+-- Reserved for a future stage: inspection photos of the tenant's current
+-- home. Not used yet, but the table exists so it can be filled in later
+-- without changing anything already built.
 CREATE TABLE IF NOT EXISTS inspection_photos (
-    id              SERIAL PRIMARY KEY,
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
     application_id  INTEGER NOT NULL REFERENCES applications(id),
-    s3_bucket       VARCHAR(200) NOT NULL,
-    s3_key          VARCHAR(500) NOT NULL,
-    uploaded_by_id  INTEGER REFERENCES users(id),
-    uploaded_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    photo_path      TEXT NOT NULL,
+    uploaded_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );

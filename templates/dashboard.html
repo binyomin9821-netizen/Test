@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Applications Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <span></span>
+    <a href="{{ url_for('admin_logout') }}">Log out</a>
+  </div>
+  <div class="page wide">
+    <h1>All Applications</h1>
+    <p class="subtitle">Newest first, across every property.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Applicant</th>
+          <th>Property</th>
+          <th>Submitted</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in applications %}
+          <tr onclick="window.location='{{ url_for('admin_application_detail', application_id=a.id) }}'" style="cursor:pointer;">
+            <td>{{ a.id }}</td>
+            <td><a href="{{ url_for('admin_application_detail', application_id=a.id) }}">{{ a.full_name }}</a></td>
+            <td>{{ a.property_name }}</td>
+            <td>{{ a.created_at }}</td>
+            <td><span class="status {{ a.status|lower }}">{{ a.status }}</span></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">No applications yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
