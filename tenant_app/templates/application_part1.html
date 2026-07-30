@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Application – Step 1 of 2{% endblock %}
+{% block content %}
+  <div class="card">
+    <div class="progress"><span class="step active">1. Basic Info</span><span class="step">2. Household Info</span></div>
+    <h1>Tenant Application</h1>
+    <p class="subtitle">Step 1 of 2: Basic Information</p>
+
+    {% if errors %}
+      <ul class="errors">
+        {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('public.apply_part1') }}">
+      <label for="full_name">Full Name</label>
+      <input type="text" id="full_name" name="full_name" value="{{ form.get('full_name', '') }}" required>
+
+      <label for="phone">Phone</label>
+      <input type="tel" id="phone" name="phone" value="{{ form.get('phone', '') }}" required>
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{ form.get('email', '') }}" required>
+
+      <label for="current_address">Current Address</label>
+      <textarea id="current_address" name="current_address" rows="3" required>{{ form.get('current_address', '') }}</textarea>
+
+      <button type="submit" class="btn-primary">Continue to Step 2</button>
+    </form>
+  </div>
+{% endblock %}

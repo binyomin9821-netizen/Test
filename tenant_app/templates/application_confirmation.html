@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Application Submitted{% endblock %}
+{% block content %}
+  <div class="card">
+    <h1>Application Submitted</h1>
+    <p>Thank you, {{ application.full_name }}. Your application (ID #{{ application.id }}) has been received
+       and is <strong>{{ application.status }}</strong>.</p>
+    <p>An inspector will contact you to schedule a visit to your current residence.</p>
+  </div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Application #{{ application.id }}{% endblock %}
+{% block content %}
+  <div class="topbar">
+    <a href="{{ url_for('admin.dashboard') }}">&larr; Back</a>
+    <a href="{{ url_for('auth.logout') }}">Log out</a>
+  </div>
+
+  <div class="card">
+    <h1>{{ application.full_name }}</h1>
+    <span class="badge {{ application.status }}">{{ application.status }}</span>
+    <p class="meta">
+      {{ application.phone }} &middot; {{ application.email }}<br>
+      {{ application.current_address }}
+    </p>
+
+    {% if application.ocr_needs_review %}
+      <p class="notice">This application was auto-filled from a scanned paper form and has not
+        yet been reviewed for accuracy. Verify the fields above before making a decision.</p>
+    {% endif %}
+
+    <h3>Housing Inspection Photos</h3>
+    {% if photos %}
+      <div class="photo-grid">
+        {% for photo in photos %}
+          {% if photo.url %}<img src="{{ photo.url }}" alt="Inspection photo">{% endif %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="meta">No inspection photos uploaded yet.</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('admin.set_decision', application_id=application.id) }}">
+      <button type="submit" name="decision" value="approved" class="btn-primary">Approve</button>
+      <button type="submit" name="decision" value="denied" class="btn-secondary">Deny</button>
+    </form>
+  </div>
+{% endblock %}

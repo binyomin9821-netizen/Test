@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Inspector Portal{% endblock %}
+{% block content %}
+  <div class="topbar">
+    <strong>Inspector Portal</strong>
+    <a href="{{ url_for('auth.logout') }}">Log out</a>
+  </div>
+
+  <p class="subtitle">Pending applications awaiting a housing inspection.</p>
+
+  {% if not applications %}
+    <div class="card">No pending applications right now.</div>
+  {% endif %}
+
+  <ul class="app-list">
+    {% for app in applications %}
+      <li class="app-item">
+        <div class="name">{{ app.full_name }}</div>
+        <div class="meta">
+          #{{ app.id }} &middot; {{ app.phone }} &middot; {{ app.current_address }}
+          &middot; <span class="badge pending">{{ app.status }}</span>
+        </div>
+
+        <form class="upload-row" method="post"
+              action="{{ url_for('inspector.upload_photo', application_id=app.id) }}"
+              enctype="multipart/form-data">
+          <input type="file" name="photo" accept="image/*" capture="environment" required>
+          <button type="submit" class="btn-secondary">Upload Housing Photo</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

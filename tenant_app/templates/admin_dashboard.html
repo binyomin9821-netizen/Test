@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Application Review{% endblock %}
+{% block content %}
+  <div class="topbar">
+    <strong>Application Review</strong>
+    <a href="{{ url_for('auth.logout') }}">Log out</a>
+  </div>
+
+  <ul class="app-list">
+    {% for app in applications %}
+      <li class="app-item">
+        <div class="name">{{ app.full_name }}</div>
+        <div class="meta">
+          #{{ app.id }} &middot; {{ app.email }}
+          &middot; <span class="badge {{ app.status }}">{{ app.status }}</span>
+        </div>
+        <a class="btn-secondary" href="{{ url_for('admin.application_detail', application_id=app.id) }}">View Details</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}
