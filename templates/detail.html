@@ -16,6 +16,12 @@
       Status: <span class="status {{ application.status|lower }}">{{ application.status }}</span>
     </p>
 
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}<div class="notice">{{ message }}</div>{% endfor %}
+      {% endif %}
+    {% endwith %}
+
     <div class="card">
       <dl class="detail-grid">
         <dt>Property</dt>

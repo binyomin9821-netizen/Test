@@ -1,6 +1,6 @@
 # Tenant Application Pilot
 
-A small private tool for the affordable-housing team. It has two parts:
+A small private tool for the affordable-housing team. It has three parts:
 
 1. **A public application form** — an applicant picks a property, then
    fills in their basic info (name, phone, email, current address) and
@@ -9,6 +9,11 @@ A small private tool for the affordable-housing team. It has two parts:
    gets you into a dashboard listing every application from every
    property, newest first, with its status (Pending / Approved / Denied).
    Clicking an application shows full details with Approve/Deny buttons.
+3. **A status check page for applicants** — using their reference number
+   and the email they applied with, an applicant can look up their own
+   status any time. Optionally, the app can also email them automatically
+   the moment the decision-maker approves or denies their application
+   (see "Setting up tenant emails" below — this is off by default).
 
 Everything is stored in one file, `instance/app.db`. There is no separate
 database program to install.
@@ -42,6 +47,11 @@ Download this project's files as a folder on your computer (for example,
 by downloading the ZIP from GitHub and unzipping it to somewhere easy to
 find, like your Desktop, in a folder named `tenant-app`).
 
+**Tip:** after you "Extract All" on the ZIP, you sometimes end up with a
+folder inside another folder of the same name. Keep opening folders until
+you actually see files like `app.py` and `run.py` directly — that's the
+one you want to be in.
+
 ### 3. Open a terminal in that folder
 
 The terminal is a window where you type commands instead of clicking.
@@ -62,7 +72,10 @@ In that terminal window, type this and press Enter:
 pip install -r requirements.txt
 ```
 
-(On some Macs you may need to type `pip3` instead of `pip`.)
+(On some Macs you may need to type `pip3` instead of `pip`. On some
+Windows machines, plain `pip` isn't recognized — if you get an error
+saying `'pip' is not recognized`, use this instead:
+`python -m pip install -r requirements.txt`.)
 
 You'll see some text scroll by — that's normal. When it stops and gives
 you a new line to type on, it's done.
@@ -111,6 +124,11 @@ will still be there next time you start it up.
 
 - **Applicants:** go to `http://127.0.0.1:5000/apply`, or just the main
   page — it goes there automatically.
+- **Applicants checking their status:** go to
+  `http://127.0.0.1:5000/status` (there's also a link to this from the
+  application form and the confirmation page). They'll need the
+  reference number they were shown when they submitted, plus the email
+  they applied with.
 - **Decision-maker:** go to `http://127.0.0.1:5000/admin/login`. The
   starting password is:
 
@@ -132,11 +150,56 @@ will still be there next time you start it up.
 
 ---
 
+## Setting up tenant emails (optional)
+
+By default, the app does **not** send any emails — Approve/Deny still
+work fine, and applicants can always check their status themselves at
+`/status`. If you'd like the app to also automatically email an applicant
+the moment their status changes, here's how to turn that on using a
+Gmail account:
+
+1. Turn on **2-Step Verification** on the Gmail account you want to send
+   from, if it isn't already: go to
+   **myaccount.google.com/security** and follow "2-Step Verification."
+2. Once that's on, go to **myaccount.google.com/apppasswords**, and
+   create a new App Password (you can name it "Tenant App" or anything).
+   Google will show you a 16-character password — copy it. This is
+   different from your normal Gmail password, and it's the only time
+   you'll see it.
+3. Open `config.py` in a plain text editor and change these lines:
+
+   ```
+   EMAIL_ENABLED = False
+   EMAIL_ADDRESS = "you@gmail.com"
+   EMAIL_APP_PASSWORD = ""
+   ```
+
+   to:
+
+   ```
+   EMAIL_ENABLED = True
+   EMAIL_ADDRESS = "your-real-gmail-address@gmail.com"
+   EMAIL_APP_PASSWORD = "the16characterapppassword"
+   ```
+
+4. Save the file, then stop and restart the app (`Ctrl+C`, then
+   `python run.py` again).
+
+From then on, whenever the decision-maker clicks Approve or Deny, the
+app will try to email the applicant automatically. Either way, the
+decision-maker's screen will tell them whether the email went out or
+not, so a bad password or no internet connection won't hide anything or
+break the Approve/Deny action itself.
+
+---
+
 ## What's already built vs. what's next
 
 **Built now:**
 - Property selection + two-part application form, saved to the database.
-- Confirmation message on submit.
+- Confirmation message on submit, with a reference number.
+- A self-service status check page for applicants.
+- Optional automatic email to the applicant when their status changes.
 - Password-protected dashboard of all applications, newest first, with
   status.
 - Application detail view with Approve / Deny buttons.
@@ -173,8 +236,9 @@ presented, fits your policy.
 | `app.py` | The web app itself — all the pages and what happens when you submit the form or click Approve/Deny. |
 | `run.py` | The file you actually run. Sets up the database if needed and opens your browser. |
 | `seed.py` | Creates the database and fills it with sample properties/applications the first time. |
+| `mail.py` | Sends the "your application status changed" email to applicants, if email is turned on. |
 | `schema.sql` | Describes the structure of the database (what information gets stored). |
-| `config.py` | The one file you might edit — the admin password. |
+| `config.py` | The file you might edit — the admin password and (optionally) email settings. |
 | `templates/` | The actual page layouts (HTML). |
 | `static/style.css` | Makes the pages look presentable. |
 | `instance/app.db` | The database file itself — created automatically, holds all your real data. Not included in this download; it's created the first time you run the app. |

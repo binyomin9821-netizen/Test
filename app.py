@@ -6,9 +6,10 @@ denies each application. Everything is stored in one SQLite file
 """
 from functools import wraps
 
-from flask import Flask, g, redirect, render_template, request, session, url_for
+from flask import Flask, flash, g, redirect, render_template, request, session, url_for
 
 import config
+import mail
 from seed import ensure_database, get_connection
 
 app = Flask(__name__)
@@ -119,6 +120,34 @@ def confirmation(application_id):
     return render_template("confirmation.html", application=application)
 
 
+@app.route("/status", methods=["GET", "POST"])
+def check_status():
+    application = None
+    error = None
+
+    if request.method == "POST":
+        reference = request.form.get("reference", "").strip()
+        email = request.form.get("email", "").strip()
+
+        if not reference or not email:
+            error = "Please enter both your reference number and email."
+        elif not reference.isdigit():
+            error = "The reference number should be numbers only (for example, 3)."
+        else:
+            db = get_db()
+            application = db.execute(
+                """SELECT applications.id, applications.status, applications.created_at,
+                          applications.decision_date, properties.name AS property_name
+                   FROM applications JOIN properties ON properties.id = applications.property_id
+                   WHERE applications.id = ? AND lower(applications.email) = lower(?)""",
+                (reference, email),
+            ).fetchone()
+            if application is None:
+                error = "We couldn't find an application with that reference number and email."
+
+    return render_template("status.html", application=application, error=error)
+
+
 # ---------------------------------------------------------------------------
 # Admin: login
 # ---------------------------------------------------------------------------
@@ -187,6 +216,23 @@ def admin_decide(application_id):
         (new_status, application_id),
     )
     db.commit()
+
+    application = db.execute(
+        """SELECT applications.full_name, applications.email, properties.name AS property_name
+           FROM applications JOIN properties ON properties.id = applications.property_id
+           WHERE applications.id = ?""",
+        (application_id,),
+    ).fetchone()
+
+    sent, error = mail.send_decision_email(
+        application["email"], application["full_name"], application["property_name"],
+        new_status, application_id,
+    )
+    if sent:
+        flash(f"Application {new_status.lower()}. Email sent to {application['email']}.")
+    else:
+        flash(f"Application {new_status.lower()}. Email was not sent: {error}")
+
     return redirect(url_for("admin_application_detail", application_id=application_id))
 
 

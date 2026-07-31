@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Check Application Status</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="page">
+    <h1>Check Your Application Status</h1>
+    <p class="subtitle">Enter your reference number and the email you applied with.</p>
+
+    {% if error %}<div class="errors">{{ error }}</div>{% endif %}
+
+    <form class="card" method="post">
+      <label for="reference">Reference Number</label>
+      <input type="text" id="reference" name="reference" value="{{ request.form.get('reference', '') }}" required>
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{ request.form.get('email', '') }}" required>
+
+      <button type="submit">Check Status</button>
+    </form>
+
+    {% if application %}
+      <div class="card">
+        <p>Application #{{ application.id }} to <strong>{{ application.property_name }}</strong></p>
+        <p>Status:
+          <span class="status {{ application.status|lower }}">{{ application.status }}</span>
+        </p>
+        <p>Submitted: {{ application.created_at }}</p>
+        {% if application.decision_date %}<p>Decision date: {{ application.decision_date }}</p>{% endif %}
+      </div>
+    {% endif %}
+
+    <a class="button" href="{{ url_for('apply') }}">Back to application form</a>
+  </div>
+</body>
+</html>

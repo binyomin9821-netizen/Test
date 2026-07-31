@@ -8,7 +8,8 @@
 <body>
   <div class="page">
     <h1>Apartment Application</h1>
-    <p class="subtitle">Please fill out the form below to apply.</p>
+    <p class="subtitle">Please fill out the form below to apply.
+      Already applied? <a href="{{ url_for('check_status') }}">Check your status</a>.</p>
 
     {% if errors %}
       <div class="errors">
