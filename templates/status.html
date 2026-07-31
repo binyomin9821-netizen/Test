@@ -11,6 +11,7 @@
     <p class="subtitle">Enter your reference number and the email you applied with.</p>
 
     {% if error %}<div class="errors">{{ error }}</div>{% endif %}
+    {% if booked_message %}<div class="notice">{{ booked_message }}</div>{% endif %}
 
     <form class="card" method="post">
       <label for="reference">Reference Number</label>
@@ -30,7 +31,24 @@
         </p>
         <p>Submitted: {{ application.created_at }}</p>
         {% if application.decision_date %}<p>Decision date: {{ application.decision_date }}</p>{% endif %}
+        <p>Inspection: {{ application.inspection_status or 'Not scheduled' }}
+          {% if my_slot %} — {{ my_slot.slot_time }}{% endif %}</p>
       </div>
+
+      {% if my_slot is none and open_slots %}
+        <div class="card">
+          <legend>Pick an Inspection Time</legend>
+          <p class="subtitle">Choose a time for someone to inspect your current home.</p>
+          {% for slot in open_slots %}
+            <form method="post" style="display:inline-block; margin: 0 8px 8px 0;">
+              <input type="hidden" name="reference" value="{{ application.id }}">
+              <input type="hidden" name="email" value="{{ request.form.get('email', '') }}">
+              <input type="hidden" name="slot_id" value="{{ slot.id }}">
+              <button type="submit" style="margin-top:0;">{{ slot.slot_time }}</button>
+            </form>
+          {% endfor %}
+        </div>
+      {% endif %}
     {% endif %}
 
     <a class="button" href="{{ url_for('apply') }}">Back to application form</a>

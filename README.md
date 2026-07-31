@@ -1,6 +1,6 @@
 # Tenant Application Pilot
 
-A small private tool for the affordable-housing team. It has three parts:
+A small private tool for the affordable-housing team. It has four parts:
 
 1. **A public application form** — an applicant picks a property, then
    fills in their basic info (name, phone, email, current address) and
@@ -8,12 +8,20 @@ A small private tool for the affordable-housing team. It has three parts:
 2. **A password-protected decision-maker page** — one shared password
    gets you into a dashboard listing every application from every
    property, newest first, with its status (Pending / Approved / Denied).
-   Clicking an application shows full details with Approve/Deny buttons.
+   Clicking an application shows full details with Approve/Deny buttons,
+   plus a list of properties (with an "add property" form and a count of
+   outstanding/Pending applications for each), and a page for creating
+   inspection time slots.
 3. **A status check page for applicants** — using their reference number
    and the email they applied with, an applicant can look up their own
-   status any time. Optionally, the app can also email them automatically
+   status any time, and pick an open inspection time slot if one hasn't
+   been booked yet. Optionally, the app can also email them automatically
    the moment the decision-maker approves or denies their application
    (see "Setting up tenant emails" below — this is off by default).
+4. **An inspector portal** — a separate password-protected login (not the
+   decision-maker's password) where whoever visits a tenant's current
+   home can see scheduled inspections and upload photos for the
+   decision-maker to review.
 
 Everything is stored in one file, `instance/app.db`. There is no separate
 database program to install.
@@ -128,7 +136,8 @@ will still be there next time you start it up.
   `http://127.0.0.1:5000/status` (there's also a link to this from the
   application form and the confirmation page). They'll need the
   reference number they were shown when they submitted, plus the email
-  they applied with.
+  they applied with. If an inspection time slot is open and not yet
+  booked, they'll see a list of times to pick from right on this page.
 - **Decision-maker:** go to `http://127.0.0.1:5000/admin/login`. The
   starting password is:
 
@@ -136,9 +145,15 @@ will still be there next time you start it up.
   changeme123
   ```
 
-  **Change this before giving this to anyone else.** Open the file
-  `config.py` in a plain text editor (Notepad on Windows, TextEdit on
-  Mac — set TextEdit to plain text mode), find the line that says:
+  From the dashboard, the top of the page links to:
+  - **Properties** — add a new property, and see how many outstanding
+    (Pending) applications each property has.
+  - **Inspection Slots** — add available inspection times (a simple date
+    and time picker); applicants pick from these on the status page.
+
+  **Change this password before giving this to anyone else.** Open the
+  file `config.py` in a plain text editor (Notepad on Windows, TextEdit
+  on Mac — set TextEdit to plain text mode), find the line that says:
 
   ```
   ADMIN_PASSWORD = "changeme123"
@@ -147,6 +162,24 @@ will still be there next time you start it up.
   and replace `changeme123` with your own password, then save the file.
   You'll need to stop and restart the app (`Ctrl+C`, then `python
   run.py` again) for the change to take effect.
+
+- **Inspector:** go to `http://127.0.0.1:5000/inspector/login`. This is a
+  **separate** password from the decision-maker's, so whoever visits
+  tenants' homes doesn't need access to the full applications dashboard.
+  The starting password is:
+
+  ```
+  changeme789
+  ```
+
+  Change it the same way as the admin password, but look for the line
+  `INSPECTOR_PASSWORD = "changeme789"` in `config.py` instead.
+
+  From the inspector dashboard, they'll see every application with a
+  booked inspection time. Clicking one lets them upload photos (JPG,
+  PNG, GIF, WEBP, or HEIC) and, when done, click "Mark Inspection
+  Complete." Those photos then show up on the decision-maker's
+  application detail page for review.
 
 ---
 
@@ -203,13 +236,17 @@ break the Approve/Deny action itself.
 - Password-protected dashboard of all applications, newest first, with
   status.
 - Application detail view with Approve / Deny buttons.
+- Property management (add properties, see outstanding applications per
+  property).
+- Inspection scheduling: the decision-maker creates open time slots,
+  applicants book one from the status page.
+- A separate inspector login for uploading inspection photos, which the
+  decision-maker can review on the application detail page.
 
 **Deliberately not built yet** (the database is already set up to hold
 these, so adding them later won't require restructuring anything):
 - A photo upload of a handwritten paper application, and text pulled
   from that photo.
-- Inspection photos of the applicant's current home, and an inspection
-  status.
 - Automated emails to property managers (each property already has a
   `property_manager_email` field ready for this — it's just unused for
   now, since property managers don't log into this tool at all).
@@ -238,7 +275,8 @@ presented, fits your policy.
 | `seed.py` | Creates the database and fills it with sample properties/applications the first time. |
 | `mail.py` | Sends the "your application status changed" email to applicants, if email is turned on. |
 | `schema.sql` | Describes the structure of the database (what information gets stored). |
-| `config.py` | The file you might edit — the admin password and (optionally) email settings. |
+| `config.py` | The file you might edit — the admin and inspector passwords, and (optionally) email settings. |
 | `templates/` | The actual page layouts (HTML). |
 | `static/style.css` | Makes the pages look presentable. |
 | `instance/app.db` | The database file itself — created automatically, holds all your real data. Not included in this download; it's created the first time you run the app. |
+| `instance/uploads/` | Inspection photos uploaded by inspectors. Also created automatically, also not included in this download, and never shared with anyone but the admin/inspector logins. |

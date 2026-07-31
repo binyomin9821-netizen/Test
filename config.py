@@ -1,8 +1,15 @@
-# Settings for the pilot. Only edit the two lines below if you want to.
+# Settings for the pilot. You only need to edit the passwords below (and
+# optionally the email settings further down) -- everything else can stay
+# as-is.
 #
 # ADMIN_PASSWORD is the one shared password the decision-maker uses to log
 # in and see all applications. Change "changeme123" to whatever you like.
 ADMIN_PASSWORD = "changeme123"
+
+# INSPECTOR_PASSWORD is a separate shared password for whoever visits
+# tenants' homes and uploads inspection photos. It's a different login
+# from the decision-maker's, so inspectors don't see the full dashboard.
+INSPECTOR_PASSWORD = "changeme789"
 
 # SECRET_KEY is just a random string Flask uses internally to keep your
 # login session secure. Any long random text works. You don't need to

@@ -131,6 +131,21 @@ a { color: #2f5fd6; }
 .status.pending { background: #fff4d6; color: #8a6100; }
 .status.approved { background: #dcf5e0; color: #146c2e; }
 .status.denied { background: #fdecea; color: #8a1f13; }
+.status.open { background: #eef0f4; color: #3a4152; }
+
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.photo-grid img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #e2e4ea;
+}
 
 .top-bar {
     display: flex;

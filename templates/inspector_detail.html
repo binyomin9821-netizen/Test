@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Inspection #{{ application.id }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <a href="{{ url_for('inspector_dashboard') }}">&larr; Back to inspections</a>
+    <a href="{{ url_for('inspector_logout') }}">Log out</a>
+  </div>
+  <div class="page">
+    <h1>Application #{{ application.id }}</h1>
+    <p class="subtitle">
+      Inspection status:
+      <span class="status {{ 'approved' if application.inspection_status == 'Completed' else 'pending' }}">
+        {{ application.inspection_status or 'Scheduled' }}
+      </span>
+    </p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}<div class="notice">{{ message }}</div>{% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="card">
+      <dl class="detail-grid">
+        <dt>Applicant</dt>
+        <dd>{{ application.full_name }}</dd>
+
+        <dt>Property</dt>
+        <dd>{{ application.property_name }} ({{ application.property_address }})</dd>
+
+        <dt>Current Address</dt>
+        <dd>{{ application.current_address }}</dd>
+
+        <dt>Phone</dt>
+        <dd>{{ application.phone }}</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <legend>Inspection Photos</legend>
+      {% if photos %}
+        <div class="photo-grid">
+          {% for photo in photos %}
+            <a href="{{ url_for('uploaded_file', filename=photo.photo_path) }}" target="_blank">
+              <img src="{{ url_for('uploaded_file', filename=photo.photo_path) }}" alt="Inspection photo">
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="subtitle" style="margin:0;">No photos uploaded yet.</p>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('inspector_upload_photo', application_id=application.id) }}" enctype="multipart/form-data" style="margin-top:16px;">
+        <label for="photo">Upload a Photo</label>
+        <input type="file" id="photo" name="photo" accept="image/*" required>
+        <button type="submit">Upload</button>
+      </form>
+    </div>
+
+    {% if application.inspection_status != 'Completed' %}
+      <div class="card">
+        <form method="post" action="{{ url_for('inspector_mark_complete', application_id=application.id) }}">
+          <button type="submit">Mark Inspection Complete</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

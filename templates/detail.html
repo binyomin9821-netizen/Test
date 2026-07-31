@@ -8,7 +8,11 @@
 <body>
   <div class="top-bar">
     <a href="{{ url_for('admin_dashboard') }}">&larr; Back to all applications</a>
-    <a href="{{ url_for('admin_logout') }}">Log out</a>
+    <span>
+      <a href="{{ url_for('admin_properties') }}">Properties</a> ·
+      <a href="{{ url_for('admin_inspections') }}">Inspection Slots</a> ·
+      <a href="{{ url_for('admin_logout') }}">Log out</a>
+    </span>
   </div>
   <div class="page">
     <h1>Application #{{ application.id }}</h1>
@@ -50,7 +54,28 @@
 
         <dt>Decision Date</dt>
         <dd>{{ application.decision_date or '—' }}</dd>
+
+        <dt>Inspection</dt>
+        <dd>
+          {{ application.inspection_status or 'Not scheduled' }}
+          {% if slot %} — {{ slot.slot_time }}{% endif %}
+        </dd>
       </dl>
+    </div>
+
+    <div class="card">
+      <legend>Inspection Photos</legend>
+      {% if photos %}
+        <div class="photo-grid">
+          {% for photo in photos %}
+            <a href="{{ url_for('uploaded_file', filename=photo.photo_path) }}" target="_blank">
+              <img src="{{ url_for('uploaded_file', filename=photo.photo_path) }}" alt="Inspection photo">
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="subtitle" style="margin:0;">No inspection photos uploaded yet.</p>
+      {% endif %}
     </div>
 
     {% if application.status == 'Pending' %}

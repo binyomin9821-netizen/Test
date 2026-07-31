@@ -64,6 +64,17 @@ def _add_sample_data(conn):
     )
     conn.commit()
 
+    # Matches the format the "Date and Time" field on the admin Inspection
+    # Slots page produces (YYYY-MM-DDTHH:MM, 24-hour), so sample slots sort
+    # correctly alongside slots added later through the app.
+    sample_slots = [
+        ("2026-08-05T10:00",),
+        ("2026-08-05T14:00",),
+        ("2026-08-06T09:30",),
+    ]
+    conn.executemany("INSERT INTO inspection_slots (slot_time) VALUES (?)", sample_slots)
+    conn.commit()
+
 
 if __name__ == "__main__":
     ensure_database()

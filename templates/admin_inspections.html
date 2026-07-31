@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Inspection Slots</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <a href="{{ url_for('admin_dashboard') }}">&larr; Back to all applications</a>
+    <span>
+      <a href="{{ url_for('admin_properties') }}">Properties</a> ·
+      <a href="{{ url_for('admin_logout') }}">Log out</a>
+    </span>
+  </div>
+  <div class="page wide">
+    <h1>Inspection Slots</h1>
+    <p class="subtitle">Add times applicants can pick from. Once an applicant books a slot, it disappears from their options.</p>
+
+    <div class="card">
+      <legend>Add a Time Slot</legend>
+      <form method="post" action="{{ url_for('admin_inspections') }}">
+        <label for="slot_time">Date and Time</label>
+        <input type="datetime-local" id="slot_time" name="slot_time" required>
+        <button type="submit">Add Slot</button>
+      </form>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Date &amp; Time</th>
+          <th>Status</th>
+          <th>Booked By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for slot in slots %}
+          <tr>
+            <td>{{ slot.slot_time }}</td>
+            <td>
+              {% if slot.application_id %}
+                <span class="status {{ 'approved' if slot.inspection_status == 'Completed' else 'pending' }}">
+                  {{ slot.inspection_status or 'Scheduled' }}
+                </span>
+              {% else %}
+                <span class="status open">Open</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if slot.application_id %}
+                <a href="{{ url_for('admin_application_detail', application_id=slot.application_id) }}">
+                  {{ slot.full_name }} (#{{ slot.application_id }})
+                </a>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="3">No inspection slots yet — add one above.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

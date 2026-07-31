@@ -8,7 +8,11 @@
 <body>
   <div class="top-bar">
     <span></span>
-    <a href="{{ url_for('admin_logout') }}">Log out</a>
+    <span>
+      <a href="{{ url_for('admin_properties') }}">Properties</a> ·
+      <a href="{{ url_for('admin_inspections') }}">Inspection Slots</a> ·
+      <a href="{{ url_for('admin_logout') }}">Log out</a>
+    </span>
   </div>
   <div class="page wide">
     <h1>All Applications</h1>

@@ -31,21 +31,30 @@ CREATE TABLE IF NOT EXISTS applications (
     created_at              TEXT NOT NULL DEFAULT (datetime('now')),
     decision_date           TEXT,
 
-    -- Reserved for future stages (unused for now, columns exist so nothing
-    -- needs to change later): a photo of the handwritten paper form, the
-    -- text pulled out of that photo, and the current status of the
-    -- in-person home inspection.
+    -- Reserved for a future stage (unused for now, columns exist so
+    -- nothing needs to change later): a photo of the handwritten paper
+    -- form, and the text pulled out of that photo.
     paper_form_photo_path    TEXT,
     ocr_extracted_text       TEXT,
+
+    -- Inspection workflow: NULL (not scheduled yet), 'Scheduled', or
+    -- 'Completed'.
     inspection_status        TEXT
 );
 
--- Reserved for a future stage: inspection photos of the tenant's current
--- home. Not used yet, but the table exists so it can be filled in later
--- without changing anything already built.
+-- Photos an inspector takes of the applicant's current home, uploaded
+-- for the decision-maker to review.
 CREATE TABLE IF NOT EXISTS inspection_photos (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     application_id  INTEGER NOT NULL REFERENCES applications(id),
     photo_path      TEXT NOT NULL,
     uploaded_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Available inspection time slots. The decision-maker creates these;
+-- application_id stays NULL until an applicant books that slot.
+CREATE TABLE IF NOT EXISTS inspection_slots (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    slot_time       TEXT NOT NULL,
+    application_id  INTEGER REFERENCES applications(id)
 );
