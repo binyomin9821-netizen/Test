@@ -7,11 +7,12 @@
 </head>
 <body>
   <div class="top-bar">
-    <a href="{{ url_for('admin_dashboard') }}">&larr; Back to all applications</a>
+    <a href="{{ url_for('admin.dashboard') }}">&larr; Back to all applications</a>
     <span>
-      <a href="{{ url_for('admin_properties') }}">Properties</a> ·
-      <a href="{{ url_for('admin_inspections') }}">Inspection Slots</a> ·
-      <a href="{{ url_for('admin_logout') }}">Log out</a>
+      <a href="{{ url_for('admin.properties') }}">Properties</a> ·
+      <a href="{{ url_for('admin.property_managers') }}">Property Managers</a> ·
+      <a href="{{ url_for('admin.inspections') }}">Inspection Slots</a> ·
+      <a href="{{ url_for('auth.logout') }}">Log out</a>
     </span>
   </div>
   <div class="page">
@@ -29,7 +30,7 @@
     <div class="card">
       <dl class="detail-grid">
         <dt>Property</dt>
-        <dd>{{ application.property_name }} ({{ application.property_address }})</dd>
+        <dd>{{ application.property.name }} ({{ application.property.address }})</dd>
 
         <dt>Full Name</dt>
         <dd>{{ application.full_name }}</dd>
@@ -50,15 +51,15 @@
         <dd>{{ application.number_of_children if application.number_of_children is not none else '—' }}</dd>
 
         <dt>Submitted</dt>
-        <dd>{{ application.created_at }}</dd>
+        <dd>{{ application.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
 
         <dt>Decision Date</dt>
-        <dd>{{ application.decision_date or '—' }}</dd>
+        <dd>{{ application.decision_date.strftime('%Y-%m-%d') if application.decision_date else '—' }}</dd>
 
         <dt>Inspection</dt>
         <dd>
           {{ application.inspection_status or 'Not scheduled' }}
-          {% if slot %} — {{ slot.slot_time }}{% endif %}
+          {% if application.inspection_slot %} — {{ application.inspection_slot.slot_time }}{% endif %}
         </dd>
       </dl>
     </div>
@@ -80,11 +81,11 @@
 
     {% if application.status == 'Pending' %}
       <div class="card">
-        <form method="post" action="{{ url_for('admin_decide', application_id=application.id) }}" style="display:inline;">
+        <form method="post" action="{{ url_for('admin.decide', application_id=application.id) }}" style="display:inline;">
           <input type="hidden" name="decision" value="Approved">
           <button type="submit">Approve</button>
         </form>
-        <form method="post" action="{{ url_for('admin_decide', application_id=application.id) }}" style="display:inline;">
+        <form method="post" action="{{ url_for('admin.decide', application_id=application.id) }}" style="display:inline;">
           <input type="hidden" name="decision" value="Denied">
           <button type="submit" class="deny">Deny</button>
         </form>

@@ -7,10 +7,11 @@
 </head>
 <body>
   <div class="top-bar">
-    <a href="{{ url_for('admin_dashboard') }}">&larr; Back to all applications</a>
+    <a href="{{ url_for('admin.dashboard') }}">&larr; Back to all applications</a>
     <span>
-      <a href="{{ url_for('admin_properties') }}">Properties</a> ·
-      <a href="{{ url_for('admin_logout') }}">Log out</a>
+      <a href="{{ url_for('admin.properties') }}">Properties</a> ·
+      <a href="{{ url_for('admin.property_managers') }}">Property Managers</a> ·
+      <a href="{{ url_for('auth.logout') }}">Log out</a>
     </span>
   </div>
   <div class="page wide">
@@ -19,7 +20,7 @@
 
     <div class="card">
       <legend>Add a Time Slot</legend>
-      <form method="post" action="{{ url_for('admin_inspections') }}">
+      <form method="post" action="{{ url_for('admin.inspections') }}">
         <label for="slot_time">Date and Time</label>
         <input type="datetime-local" id="slot_time" name="slot_time" required>
         <button type="submit">Add Slot</button>
@@ -39,18 +40,18 @@
           <tr>
             <td>{{ slot.slot_time }}</td>
             <td>
-              {% if slot.application_id %}
-                <span class="status {{ 'approved' if slot.inspection_status == 'Completed' else 'pending' }}">
-                  {{ slot.inspection_status or 'Scheduled' }}
+              {% if slot.application %}
+                <span class="status {{ 'approved' if slot.application.inspection_status == 'Completed' else 'pending' }}">
+                  {{ slot.application.inspection_status or 'Scheduled' }}
                 </span>
               {% else %}
                 <span class="status open">Open</span>
               {% endif %}
             </td>
             <td>
-              {% if slot.application_id %}
-                <a href="{{ url_for('admin_application_detail', application_id=slot.application_id) }}">
-                  {{ slot.full_name }} (#{{ slot.application_id }})
+              {% if slot.application %}
+                <a href="{{ url_for('admin.application_detail', application_id=slot.application.id) }}">
+                  {{ slot.application.full_name }} (#{{ slot.application.id }})
                 </a>
               {% else %}
                 —

@@ -25,12 +25,12 @@
 
     {% if application %}
       <div class="card">
-        <p>Application #{{ application.id }} to <strong>{{ application.property_name }}</strong></p>
+        <p>Application #{{ application.id }} to <strong>{{ application.property.name }}</strong></p>
         <p>Status:
           <span class="status {{ application.status|lower }}">{{ application.status }}</span>
         </p>
-        <p>Submitted: {{ application.created_at }}</p>
-        {% if application.decision_date %}<p>Decision date: {{ application.decision_date }}</p>{% endif %}
+        <p>Submitted: {{ application.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+        {% if application.decision_date %}<p>Decision date: {{ application.decision_date.strftime('%Y-%m-%d') }}</p>{% endif %}
         <p>Inspection: {{ application.inspection_status or 'Not scheduled' }}
           {% if my_slot %} — {{ my_slot.slot_time }}{% endif %}</p>
       </div>
@@ -51,7 +51,7 @@
       {% endif %}
     {% endif %}
 
-    <a class="button" href="{{ url_for('apply') }}">Back to application form</a>
+    <a class="button" href="{{ url_for('public.apply') }}">Back to application form</a>
   </div>
 </body>
 </html>

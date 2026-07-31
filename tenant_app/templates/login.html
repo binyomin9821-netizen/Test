@@ -2,19 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Inspector Login</title>
+  <title>Staff Login</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <div class="page">
-    <h1>Inspector Login</h1>
-    <p class="subtitle">Enter the shared inspector password to see scheduled inspections.</p>
+    <h1>Staff Login</h1>
+    <p class="subtitle">For the admin and property managers.</p>
 
     {% if error %}<div class="errors">{{ error }}</div>{% endif %}
 
     <form class="card" method="post">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required autofocus>
+
       <label for="password">Password</label>
-      <input type="password" id="password" name="password" required autofocus>
+      <input type="password" id="password" name="password" required>
+
       <button type="submit">Log In</button>
     </form>
   </div>

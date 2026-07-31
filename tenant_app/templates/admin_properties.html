@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Properties</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <a href="{{ url_for('admin.dashboard') }}">&larr; Back to all applications</a>
+    <span>
+      <a href="{{ url_for('admin.property_managers') }}">Property Managers</a> ·
+      <a href="{{ url_for('admin.inspections') }}">Inspection Slots</a> ·
+      <a href="{{ url_for('auth.logout') }}">Log out</a>
+    </span>
+  </div>
+  <div class="page wide">
+    <h1>Properties</h1>
+    <p class="subtitle">Every property in the portfolio, with its outstanding (Pending) applications.</p>
+
+    {% if errors %}
+      <div class="errors">
+        <ul style="margin:0; padding-left:18px;">
+          {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <table>
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>Address</th>
+          <th>Manager Contact</th>
+          <th>Assigned PMs</th>
+          <th>Pending</th>
+          <th>Total Applications</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for property in properties %}
+          <tr>
+            <td>{{ property.name }}</td>
+            <td>{{ property.address }}</td>
+            <td>
+              {{ property.manager_email or '—' }}
+              {% if property.manager_phone %}<br>{{ property.manager_phone }}{% endif %}
+            </td>
+            <td>
+              {% if property.assignments %}
+                {{ property.assignments | map(attribute='user.name') | join(', ') }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>{{ pending_counts.get(property.id, 0) }}</td>
+            <td>{{ total_counts.get(property.id, 0) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6">No properties yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="card" style="margin-top:24px;">
+      <legend>Add a Property</legend>
+      <form method="post" action="{{ url_for('admin.properties') }}">
+        <label for="name">Property Name</label>
+        <input type="text" id="name" name="name" value="{{ form.get('name', '') }}" required>
+
+        <label for="address">Address</label>
+        <input type="text" id="address" name="address" value="{{ form.get('address', '') }}" required>
+
+        <label for="manager_email">Property Manager Email</label>
+        <input type="email" id="manager_email" name="manager_email" value="{{ form.get('manager_email', '') }}">
+
+        <label for="manager_phone">Property Manager Phone</label>
+        <input type="tel" id="manager_phone" name="manager_phone" value="{{ form.get('manager_phone', '') }}">
+
+        <button type="submit">Add Property</button>
+      </form>
+      <p class="subtitle" style="margin-top:12px; margin-bottom:0;">
+        To give a property manager an actual login, go to
+        <a href="{{ url_for('admin.property_managers') }}">Property Managers</a>.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

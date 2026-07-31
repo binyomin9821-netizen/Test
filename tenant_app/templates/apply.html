@@ -9,7 +9,7 @@
   <div class="page">
     <h1>Apartment Application</h1>
     <p class="subtitle">Please fill out the form below to apply.
-      Already applied? <a href="{{ url_for('check_status') }}">Check your status</a>.</p>
+      Already applied? <a href="{{ url_for('public.check_status') }}">Check your status</a>.</p>
 
     {% if errors %}
       <div class="errors">
@@ -19,7 +19,7 @@
       </div>
     {% endif %}
 
-    <form class="card" method="post" action="{{ url_for('apply') }}">
+    <form class="card" method="post" action="{{ url_for('public.apply') }}">
       <fieldset>
         <legend>Which property are you applying to?</legend>
         <label for="property_id">Property</label>

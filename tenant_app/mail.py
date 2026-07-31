@@ -3,19 +3,20 @@ Sends the tenant a short email when the decision-maker approves or denies
 their application. Uses Gmail's outgoing mail server and Python's
 built-in email tools, so no extra packages are needed.
 
-If EMAIL_ENABLED is False in config.py, sending is skipped and this just
-reports back that it's turned off -- Approve/Deny still work either way.
+If EMAIL_ENABLED is False in config (see .env.example), sending is
+skipped and this just reports back that it's turned off -- Approve/Deny
+still work either way.
 """
 import smtplib
 from email.message import EmailMessage
 
-import config
+from tenant_app import config
 
 
 def send_decision_email(to_email, full_name, property_name, status, application_id):
     """Returns (True, None) on success, or (False, message) if it didn't send."""
     if not config.EMAIL_ENABLED:
-        return False, "Email notifications are turned off (see config.py)."
+        return False, "Email notifications are turned off (see .env)."
 
     message = EmailMessage()
     message["Subject"] = f"Update on your application to {property_name}"

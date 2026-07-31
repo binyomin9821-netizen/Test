@@ -10,7 +10,7 @@
     <h1>Application Submitted</h1>
     <div class="card">
       <p>Thank you, {{ application.full_name }}. Your application to
-        <strong>{{ application.property_name }}</strong> has been received.</p>
+        <strong>{{ application.property.name }}</strong> has been received.</p>
       <p>Its current status is:
         <span class="status pending">{{ application.status }}</span>
       </p>
@@ -18,8 +18,8 @@
       <p>Save this number — you'll use it, along with your email, to check your
         status later at the "Check your status" link on the application page.</p>
     </div>
-    <a class="button" href="{{ url_for('check_status') }}">Check status</a>
-    <a class="button" href="{{ url_for('apply') }}">Submit another application</a>
+    <a class="button" href="{{ url_for('public.check_status') }}">Check status</a>
+    <a class="button" href="{{ url_for('public.apply') }}">Submit another application</a>
   </div>
 </body>
 </html>

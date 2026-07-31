@@ -1,282 +1,235 @@
-# Tenant Application Pilot
+# Tenant Application System
 
-A small private tool for the affordable-housing team. It has four parts:
+The foundation for a real, portfolio-scale version of the tenant
+application pilot: real logins with roles, a production-grade database
+(PostgreSQL instead of the single-file version), and a data model ready
+for the features coming in later phases (paper-application OCR, vacancy
+and waitlist logic, inspection scheduling with deadlines, and PM
+scoring/photos/voice notes). None of those later features are built yet
+-- this stage is purely the new foundation, with the application form and
+decision-maker dashboard you already had moved onto it.
 
-1. **A public application form** — an applicant picks a property, then
-   fills in their basic info (name, phone, email, current address) and
-   household info (marital status, number of children), and submits.
-2. **A password-protected decision-maker page** — one shared password
-   gets you into a dashboard listing every application from every
-   property, newest first, with its status (Pending / Approved / Denied).
-   Clicking an application shows full details with Approve/Deny buttons,
-   plus a list of properties (with an "add property" form and a count of
-   outstanding/Pending applications for each), and a page for creating
-   inspection time slots.
-3. **A status check page for applicants** — using their reference number
-   and the email they applied with, an applicant can look up their own
-   status any time, and pick an open inspection time slot if one hasn't
-   been booked yet. Optionally, the app can also email them automatically
-   the moment the decision-maker approves or denies their application
-   (see "Setting up tenant emails" below — this is off by default).
-4. **An inspector portal** — a separate password-protected login (not the
-   decision-maker's password) where whoever visits a tenant's current
-   home can see scheduled inspections and upload photos for the
-   decision-maker to review.
+**This is still meant to run only on your own computer.** It is not on
+the internet and nobody outside your computer can reach it.
 
-Everything is stored in one file, `instance/app.db`. There is no separate
-database program to install.
+## What's in this stage
 
-**This is meant to run only on your own computer.** It is not on the
-internet and nobody outside your computer can reach it. That's
-intentional — do not deploy this to a public web host as-is.
+- **Public application form** (`/apply`) -- unchanged from before: pick a
+  property, fill in basic + household info, submit, get a reference
+  number.
+- **Applicant status check** (`/status`) -- unchanged: look up your
+  status and book an inspection time slot with your reference number and
+  email.
+- **Admin** -- logs in with an email + password (not a shared password
+  anymore). Sees every property, every application, and can:
+  - Approve/Deny applications.
+  - Add properties (`/admin/properties`), each with a manager email and
+    phone number, and see outstanding (Pending) applications per
+    property.
+  - Create Property Manager logins and assign them properties
+    (`/admin/property-managers`).
+  - Add inspection time slots (`/admin/inspections`).
+- **Property Manager** -- logs in with their own email + password, and
+  sees **only** the properties assigned to them: those properties'
+  scheduled inspections, and can upload inspection photos / mark an
+  inspection complete. (There's no separate "inspector" login anymore --
+  that role is folded into Property Manager for now, per your call. It's
+  easy to split back out later if you want a dedicated inspector role.)
+
+## What's deliberately not built yet
+
+Everything below is scoped for later phases, on purpose -- the data
+model is ready for them, but none of the workflow exists yet:
+
+- The real, comprehensive affordable-housing application (SSN,
+  household members, income breakdown, etc.) and paper-form OCR.
+- Vacancy tracking and waitlist logic (the `Waitlisted` status exists as
+  a possible value, but nothing sets it automatically, and units don't
+  have an admin screen to mark vacant/occupied yet).
+- Per-property dashboards and a property picker for 200+ properties.
+- The 5-day inspection SLA, countdown, reminders, and escalation to a
+  supervisor.
+- The 10-criteria PM scoring form, 10-15 required photos, and voice
+  notes.
+
+## A structural choice worth knowing about
+
+The old version used SQLite (one file) and hand-written SQL. This
+version uses PostgreSQL and an ORM (SQLAlchemy), which is the standard
+way to build something meant to grow -- but it means schema changes
+(adding new columns/tables in later phases) need a migration strategy.
+For this stage, the app just creates all tables fresh on first startup
+(`db.create_all()`), which is simple and reliable. Before Phase 2 adds
+new fields (SSN, income, household members, etc.), it's worth adding a
+proper migration tool (Flask-Migrate/Alembic) so schema changes can be
+applied without wiping data -- flagging that now so it isn't a surprise
+later.
 
 ---
 
 ## Running it for the first time
 
-You'll do this once to get set up. It looks like a lot of steps, but each
-one is small.
+This version runs in **Docker** instead of installing Python directly.
+It's a bit more to install once, but after that, everything -- the
+database included -- starts with one command, and you won't hit the
+"pip is not recognized" type of issues from before.
 
-### 1. Install Python
+### 1. Install Docker Desktop
 
-Python is the programming language this tool is written in.
+1. Go to **docker.com/products/docker-desktop** and download it for
+   Windows.
+2. Run the installer. Accept the defaults.
+3. It'll ask you to restart your computer -- do that.
+4. After restarting, open the **Docker Desktop** app from your Start
+   menu and leave it running in the background (look for the whale icon
+   in your system tray, near the clock). Docker Desktop needs to be
+   running any time you use the app.
 
-- Go to **python.org/downloads** and download the installer for your
-  operating system (Windows or Mac).
-- Run the installer.
-  - **On Windows:** on the first screen, check the box that says
-    **"Add python.exe to PATH"** before clicking Install. This step is
-    easy to miss and important.
-  - **On Mac:** just click through the installer normally.
+   Note: on some Windows setups, Docker Desktop will prompt you to
+   install "WSL2" (Windows Subsystem for Linux) the first time -- just
+   follow its prompts and let it install; it's a one-time step.
 
 ### 2. Get the project files onto your computer
 
-Download this project's files as a folder on your computer (for example,
-by downloading the ZIP from GitHub and unzipping it to somewhere easy to
-find, like your Desktop, in a folder named `tenant-app`).
+Same as before: download this project's files as a ZIP from GitHub and
+extract them (right-click the ZIP → Extract All). Keep opening folders
+until you see `docker-compose.yml`, `run.py`, and a `tenant_app` folder
+directly -- that's the one you want to be in.
 
-**Tip:** after you "Extract All" on the ZIP, you sometimes end up with a
-folder inside another folder of the same name. Keep opening folders until
-you actually see files like `app.py` and `run.py` directly — that's the
-one you want to be in.
+### 3. Set up your settings file
 
-### 3. Open a terminal in that folder
+1. In that folder, find `.env.example`.
+2. Make a copy of it in the same folder, and rename the copy to exactly
+   `.env` (just `.env`, nothing before the dot).
+   - **On Windows**, if you don't see the ".example" part of the
+     filename, File Explorer is hiding file extensions. Go to the
+     **View** tab in File Explorer and check "File name extensions" to
+     turn them on.
+3. Open `.env` in Notepad and change at least these two lines to your
+   own values:
+   ```
+   ADMIN_EMAIL=admin@example.com
+   ADMIN_BOOTSTRAP_PASSWORD=changeme123
+   ```
+   This becomes your admin login the first time the app starts. You can
+   leave everything else in `.env` as-is for now.
 
-The terminal is a window where you type commands instead of clicking.
+### 4. Open a terminal in that folder
 
-- **On Windows:** open the `tenant-app` folder in File Explorer, click in
-  the address bar at the top, type `cmd`, and press Enter. A black window
-  opens, already pointed at the right folder.
-- **On Mac:** open the `tenant-app` folder in Finder, then go to
-  **Finder > Services > New Terminal at Folder** (or open the Terminal
-  app and type `cd ` followed by dragging the folder into the window,
-  then press Enter).
+Same trick as before: open the folder in File Explorer, click in the
+address bar, type `cmd`, press Enter.
 
-### 4. Install the one thing this project needs (Flask)
-
-In that terminal window, type this and press Enter:
-
-```
-pip install -r requirements.txt
-```
-
-(On some Macs you may need to type `pip3` instead of `pip`. On some
-Windows machines, plain `pip` isn't recognized — if you get an error
-saying `'pip' is not recognized`, use this instead:
-`python -m pip install -r requirements.txt`.)
-
-You'll see some text scroll by — that's normal. When it stops and gives
-you a new line to type on, it's done.
-
-### 5. Start the app
-
-Still in that same terminal window, type:
+### 5. Start everything with one command
 
 ```
-python run.py
+docker compose up --build
 ```
 
-(Again, on some Macs use `python3` instead of `python`.)
+The first time, this downloads and builds everything, which can take a
+few minutes -- you'll see a lot of text scroll by, that's normal. When
+it settles down and you see log lines mentioning the app running, it's
+ready.
 
-Your web browser should open automatically to the application form. If
-it doesn't, open your browser yourself and go to:
+Open your browser to:
 
 ```
-http://127.0.0.1:5000/apply
+http://127.0.0.1:5000
 ```
 
-The first time you run this, it also automatically creates the database
-and fills it with 5 sample properties and 3 sample applications, so you
-immediately have something to look at.
-
-To **stop** the app, click back into the terminal window and press
-`Ctrl+C`.
+To **stop** it, go back to that terminal window and press `Ctrl+C`.
 
 ---
 
 ## Running it again later
 
-Every time after the first, it's just steps 3 and 5 above:
+1. Make sure **Docker Desktop is running** (open it from the Start
+   menu if it isn't).
+2. Open a terminal in the project folder (step 4 above).
+3. Type:
+   ```
+   docker compose up
+   ```
+   (no `--build` needed unless you've downloaded a code update).
+4. Open `http://127.0.0.1:5000` in your browser.
+5. `Ctrl+C` in the terminal when you're done.
 
-1. Open a terminal in the `tenant-app` folder (see step 3 above).
-2. Type `python run.py` and press Enter.
-3. Your browser opens to the form automatically.
-4. When you're done, press `Ctrl+C` in the terminal to stop it.
+Your data persists between runs automatically -- it's stored in a Docker
+volume, not inside the containers themselves, so stopping and starting
+doesn't lose anything.
 
-Your data (all submitted applications) is saved in `instance/app.db` and
-will still be there next time you start it up.
+### Getting a code update later
+
+Same as before: stop the app, download the new ZIP, extract it, but this
+time **copy your existing `.env` file** into the new folder before
+starting (so you don't lose your passwords), then run
+`docker compose up --build` (the `--build` matters this time, so it
+picks up the code changes).
 
 ---
 
-## Using it
+## Logging in
 
-- **Applicants:** go to `http://127.0.0.1:5000/apply`, or just the main
-  page — it goes there automatically.
-- **Applicants checking their status:** go to
-  `http://127.0.0.1:5000/status` (there's also a link to this from the
-  application form and the confirmation page). They'll need the
-  reference number they were shown when they submitted, plus the email
-  they applied with. If an inspection time slot is open and not yet
-  booked, they'll see a list of times to pick from right on this page.
-- **Decision-maker:** go to `http://127.0.0.1:5000/admin/login`. The
-  starting password is:
+- **Admin:** `http://127.0.0.1:5000/login`, using the `ADMIN_EMAIL` /
+  `ADMIN_BOOTSTRAP_PASSWORD` you set in `.env`.
+- **Property Managers:** same login page. The first time the app starts
+  with an empty database, it creates two sample PM logins so you can see
+  the role-based access working right away:
+  - `pat.rivera@example.com` / `changeme456` (assigned to Maple Court
+    Apartments and Riverside Commons)
+  - `sam.chen@example.com` / `changeme456` (assigned to Oakwood Terrace
+    and Sunset Gardens)
 
-  ```
-  changeme123
-  ```
-
-  From the dashboard, the top of the page links to:
-  - **Properties** — add a new property, and see how many outstanding
-    (Pending) applications each property has.
-  - **Inspection Slots** — add available inspection times (a simple date
-    and time picker); applicants pick from these on the status page.
-
-  **Change this password before giving this to anyone else.** Open the
-  file `config.py` in a plain text editor (Notepad on Windows, TextEdit
-  on Mac — set TextEdit to plain text mode), find the line that says:
-
-  ```
-  ADMIN_PASSWORD = "changeme123"
-  ```
-
-  and replace `changeme123` with your own password, then save the file.
-  You'll need to stop and restart the app (`Ctrl+C`, then `python
-  run.py` again) for the change to take effect.
-
-- **Inspector:** go to `http://127.0.0.1:5000/inspector/login`. This is a
-  **separate** password from the decision-maker's, so whoever visits
-  tenants' homes doesn't need access to the full applications dashboard.
-  The starting password is:
-
-  ```
-  changeme789
-  ```
-
-  Change it the same way as the admin password, but look for the line
-  `INSPECTOR_PASSWORD = "changeme789"` in `config.py` instead.
-
-  From the inspector dashboard, they'll see every application with a
-  booked inspection time. Clicking one lets them upload photos (JPG,
-  PNG, GIF, WEBP, or HEIC) and, when done, click "Mark Inspection
-  Complete." Those photos then show up on the decision-maker's
-  application detail page for review.
+  For real property managers, log in as admin and use the **Property
+  Managers** page to create their accounts and assign properties --
+  don't reuse the sample logins for real staff.
 
 ---
 
 ## Setting up tenant emails (optional)
 
-By default, the app does **not** send any emails — Approve/Deny still
-work fine, and applicants can always check their status themselves at
-`/status`. If you'd like the app to also automatically email an applicant
-the moment their status changes, here's how to turn that on using a
-Gmail account:
+Same feature as before, just configured in `.env` now instead of
+`config.py`:
 
-1. Turn on **2-Step Verification** on the Gmail account you want to send
-   from, if it isn't already: go to
-   **myaccount.google.com/security** and follow "2-Step Verification."
-2. Once that's on, go to **myaccount.google.com/apppasswords**, and
-   create a new App Password (you can name it "Tenant App" or anything).
-   Google will show you a 16-character password — copy it. This is
-   different from your normal Gmail password, and it's the only time
-   you'll see it.
-3. Open `config.py` in a plain text editor and change these lines:
+```
+EMAIL_ENABLED=true
+EMAIL_ADDRESS=your-real-gmail-address@gmail.com
+EMAIL_APP_PASSWORD=the16characterapppassword
+```
 
-   ```
-   EMAIL_ENABLED = False
-   EMAIL_ADDRESS = "you@gmail.com"
-   EMAIL_APP_PASSWORD = ""
-   ```
-
-   to:
-
-   ```
-   EMAIL_ENABLED = True
-   EMAIL_ADDRESS = "your-real-gmail-address@gmail.com"
-   EMAIL_APP_PASSWORD = "the16characterapppassword"
-   ```
-
-4. Save the file, then stop and restart the app (`Ctrl+C`, then
-   `python run.py` again).
-
-From then on, whenever the decision-maker clicks Approve or Deny, the
-app will try to email the applicant automatically. Either way, the
-decision-maker's screen will tell them whether the email went out or
-not, so a bad password or no internet connection won't hide anything or
-break the Approve/Deny action itself.
-
----
-
-## What's already built vs. what's next
-
-**Built now:**
-- Property selection + two-part application form, saved to the database.
-- Confirmation message on submit, with a reference number.
-- A self-service status check page for applicants.
-- Optional automatic email to the applicant when their status changes.
-- Password-protected dashboard of all applications, newest first, with
-  status.
-- Application detail view with Approve / Deny buttons.
-- Property management (add properties, see outstanding applications per
-  property).
-- Inspection scheduling: the decision-maker creates open time slots,
-  applicants book one from the status page.
-- A separate inspector login for uploading inspection photos, which the
-  decision-maker can review on the application detail page.
-
-**Deliberately not built yet** (the database is already set up to hold
-these, so adding them later won't require restructuring anything):
-- A photo upload of a handwritten paper application, and text pulled
-  from that photo.
-- Automated emails to property managers (each property already has a
-  `property_manager_email` field ready for this — it's just unused for
-  now, since property managers don't log into this tool at all).
+See the earlier instructions for creating a Gmail "App Password" (turn
+on 2-Step Verification, then create one at
+**myaccount.google.com/apppasswords**). After editing `.env`, stop the
+app and run `docker compose up` again for the change to take effect.
 
 ---
 
 ## A note on the two protected-class questions
 
-The form asks for **marital status** and **number of children**. Under
-the Fair Housing Act, these are protected categories, and the pilot's
-code never uses them to make or influence an approve/deny decision — the
-Approve/Deny buttons don't look at those fields at all. They're shown to
-the decision-maker for context only. Before using this with real
-applicants, it's worth confirming with whoever handles fair-housing
-compliance at your company that collecting these fields, and how they're
-presented, fits your policy.
+Unchanged from before: the form asks for **marital status** and
+**number of children**. These are Fair Housing–protected categories, and
+the code never uses them in the Approve/Deny decision -- they're shown
+to the decision-maker for context only. Worth a compliance check-in
+before real applicants use this.
 
 ---
 
 ## Project files, in plain English
 
-| File | What it does |
+| File / folder | What it does |
 |---|---|
-| `app.py` | The web app itself — all the pages and what happens when you submit the form or click Approve/Deny. |
-| `run.py` | The file you actually run. Sets up the database if needed and opens your browser. |
-| `seed.py` | Creates the database and fills it with sample properties/applications the first time. |
-| `mail.py` | Sends the "your application status changed" email to applicants, if email is turned on. |
-| `schema.sql` | Describes the structure of the database (what information gets stored). |
-| `config.py` | The file you might edit — the admin and inspector passwords, and (optionally) email settings. |
-| `templates/` | The actual page layouts (HTML). |
-| `static/style.css` | Makes the pages look presentable. |
-| `instance/app.db` | The database file itself — created automatically, holds all your real data. Not included in this download; it's created the first time you run the app. |
-| `instance/uploads/` | Inspection photos uploaded by inspectors. Also created automatically, also not included in this download, and never shared with anyone but the admin/inspector logins. |
+| `docker-compose.yml` | Defines the two pieces that run together: the database and the web app. This is what `docker compose up` reads. |
+| `Dockerfile` | Instructions for building the web app's container. |
+| `.env` (you create this) | Your real passwords and settings. Never uploaded to GitHub. |
+| `.env.example` | The template `.env` is copied from. |
+| `run.py` | Starts the app -- what the web container actually runs. |
+| `tenant_app/__init__.py` | Assembles the app: database, login system, and all the pages. |
+| `tenant_app/models.py` | The database structure: Users, Properties, Units, Applications, Inspection Slots/Photos, and who's assigned to what. |
+| `tenant_app/auth.py` | Login/logout, and the rules for who can see admin pages vs. property-manager pages. |
+| `tenant_app/routes_admin.py` | Admin-only pages. |
+| `tenant_app/routes_pm.py` | Property-manager portal pages. |
+| `tenant_app/routes_public.py` | The public application form and status page -- no login. |
+| `tenant_app/seed.py` | Creates the database tables and sample data the first time the app runs. |
+| `tenant_app/mail.py` | Sends the applicant-decision email, if turned on. |
+| `tenant_app/config.py` | Reads your `.env` settings -- you shouldn't need to edit this file directly. |
+| `tenant_app/templates/` | The actual page layouts (HTML). |
+| `tenant_app/static/style.css` | Makes the pages look presentable. |

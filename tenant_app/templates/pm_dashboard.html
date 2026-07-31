@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Property Manager Portal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <span></span>
+    <a href="{{ url_for('auth.logout') }}">Log out</a>
+  </div>
+  <div class="page wide">
+    <h1>Your Properties</h1>
+    <p class="subtitle">The properties assigned to you.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>Address</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for property in properties %}
+          <tr>
+            <td>{{ property.name }}</td>
+            <td>{{ property.address }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="2">No properties are assigned to you yet -- ask your admin.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h1 style="margin-top:32px;">Scheduled Inspections</h1>
+    <p class="subtitle">Applicants who booked a time to have their current home inspected, for your properties.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Date &amp; Time</th>
+          <th>Applicant</th>
+          <th>Property</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for slot in inspections %}
+          <tr onclick="window.location='{{ url_for('pm.application_detail', application_id=slot.application.id) }}'" style="cursor:pointer;">
+            <td>{{ slot.slot_time }}</td>
+            <td><a href="{{ url_for('pm.application_detail', application_id=slot.application.id) }}">{{ slot.application.full_name }}</a></td>
+            <td>{{ slot.application.property.name }}</td>
+            <td>
+              <span class="status {{ 'approved' if slot.application.inspection_status == 'Completed' else 'pending' }}">
+                {{ slot.application.inspection_status or 'Scheduled' }}
+              </span>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4">No inspections scheduled yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
