@@ -12,13 +12,14 @@
       <a href="{{ url_for('admin.properties') }}">Properties</a> ·
       <a href="{{ url_for('admin.property_managers') }}">Property Managers</a> ·
       <a href="{{ url_for('admin.inspections') }}">Inspection Slots</a> ·
+      <a href="{{ url_for('admin.testing_tools') }}">Testing Tools</a> ·
       <a href="{{ url_for('auth.logout') }}">Log out</a>
     </span>
   </div>
   <div class="page">
     <h1>Application #{{ application.id }}</h1>
     <p class="subtitle">
-      Status: <span class="status {{ application.status|lower }}">{{ application.status }}</span>
+      Status: <span class="status {{ application.status_css_class }}">{{ application.status }}</span>
     </p>
 
     {% with messages = get_flashed_messages() %}
@@ -35,6 +36,12 @@
         <dt>Full Name</dt>
         <dd>{{ application.full_name }}</dd>
 
+        <dt>Date of Birth</dt>
+        <dd>{{ application.date_of_birth.strftime('%Y-%m-%d') if application.date_of_birth else '—' }}</dd>
+
+        <dt>SSN</dt>
+        <dd>{{ ssn_masked }}</dd>
+
         <dt>Phone</dt>
         <dd>{{ application.phone }}</dd>
 
@@ -47,8 +54,22 @@
         <dt>Marital Status</dt>
         <dd>{{ application.marital_status or '—' }}</dd>
 
-        <dt>Number of Children</dt>
+        <dt>Number of Dependents</dt>
         <dd>{{ application.number_of_children if application.number_of_children is not none else '—' }}</dd>
+
+        <dt>Employer</dt>
+        <dd>
+          {{ application.employer_name or '—' }}
+          {% if application.employer_contact %}({{ application.employer_contact }}){% endif %}
+        </dd>
+
+        <dt>Monthly Income</dt>
+        <dd>
+          Employment: ${{ '%.2f'|format(application.income_employment) if application.income_employment is not none else '0.00' }} ·
+          Benefits: ${{ '%.2f'|format(application.income_benefits) if application.income_benefits is not none else '0.00' }} ·
+          Other: ${{ '%.2f'|format(application.income_other) if application.income_other is not none else '0.00' }} ·
+          <strong>Total: ${{ '%.2f'|format(application.total_household_income) }}</strong>
+        </dd>
 
         <dt>Submitted</dt>
         <dd>{{ application.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
@@ -60,9 +81,72 @@
         <dd>
           {{ application.inspection_status or 'Not scheduled' }}
           {% if application.inspection_slot %} — {{ application.inspection_slot.slot_time }}{% endif %}
+          {% if application.status == 'Approved for inspection' and application.inspection_status != 'Completed' %}
+            {% set days_left = application.inspection_days_left %}
+            — <span class="countdown {{ 'danger' if days_left is not none and days_left <= 0 else ('warning' if days_left is not none and days_left <= 1 else '') }}">
+              {% if days_left is none %}—
+              {% elif days_left > 0 %}{{ days_left }} day(s) left
+              {% else %}OVERDUE
+              {% endif %}
+            </span>
+          {% endif %}
         </dd>
       </dl>
     </div>
+
+    {% if application.inspection_submission %}
+      {% set submission = application.inspection_submission %}
+      <div class="card">
+        <legend>Inspection Scores (submitted {{ submission.submitted_at.strftime('%Y-%m-%d %H:%M') }} by {{ submission.submitted_by.name }})</legend>
+        {% for label, value in submission.scores %}
+          <div style="margin-top:10px;">
+            <div style="display:flex; justify-content:space-between;">
+              <span>{{ label }}</span><strong>{{ value }}/10</strong>
+            </div>
+            <div class="score-bar-track"><div class="score-bar-fill" style="width:{{ value * 10 }}%;"></div></div>
+          </div>
+        {% endfor %}
+        <p style="margin-top:16px;"><strong>Average: {{ submission.average_score }}/10</strong></p>
+
+        {% if submission.description %}
+          <p style="margin-top:16px;"><strong>Notes:</strong> {{ submission.description }}</p>
+        {% endif %}
+
+        {% if submission.voice_note_path %}
+          <p style="margin-top:16px;"><strong>Voice note:</strong></p>
+          <audio controls src="{{ url_for('uploaded_file', filename=submission.voice_note_path) }}"></audio>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if application.household_members %}
+      <div class="card">
+        <legend>Household Members</legend>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Date of Birth</th><th>Relationship</th></tr>
+          </thead>
+          <tbody>
+            {% for member in application.household_members %}
+              <tr>
+                <td>{{ member.name }}</td>
+                <td>{{ member.date_of_birth.strftime('%Y-%m-%d') if member.date_of_birth else '—' }}</td>
+                <td>{{ member.relationship_to_applicant or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+    {% if application.paper_form_photo_path %}
+      <div class="card">
+        <legend>Scanned Paper Application</legend>
+        <a href="{{ url_for('uploaded_file', filename=application.paper_form_photo_path) }}" target="_blank">
+          <img src="{{ url_for('uploaded_file', filename=application.paper_form_photo_path) }}" alt="Scanned application" style="max-width:100%; border-radius:8px;">
+        </a>
+      </div>
+    {% endif %}
 
     <div class="card">
       <legend>Inspection Photos</legend>
@@ -79,15 +163,33 @@
       {% endif %}
     </div>
 
-    {% if application.status == 'Pending' %}
+    {% if application.status in ('Pending', 'Active — unit available', 'Waitlisted') %}
       <div class="card">
         <form method="post" action="{{ url_for('admin.decide', application_id=application.id) }}" style="display:inline;">
-          <input type="hidden" name="decision" value="Approved">
-          <button type="submit">Approve</button>
+          <input type="hidden" name="decision" value="ApproveForInspection">
+          <button type="submit">Approve for Inspection</button>
         </form>
         <form method="post" action="{{ url_for('admin.decide', application_id=application.id) }}" style="display:inline;">
           <input type="hidden" name="decision" value="Denied">
           <button type="submit" class="deny">Deny</button>
+        </form>
+      </div>
+    {% elif application.status == 'Approved for inspection' %}
+      <div class="card">
+        <p class="subtitle" style="margin-top:0;">
+          {% if application.inspection_submission %}
+            The inspection is in. Review it above, then make a final decision.
+          {% else %}
+            Waiting on the property manager's inspection. You can still make a final decision now if needed.
+          {% endif %}
+        </p>
+        <form method="post" action="{{ url_for('admin.decide', application_id=application.id) }}" style="display:inline;">
+          <input type="hidden" name="decision" value="Approved">
+          <button type="submit">Final Approve</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.decide', application_id=application.id) }}" style="display:inline;">
+          <input type="hidden" name="decision" value="Denied">
+          <button type="submit" class="deny">Final Deny</button>
         </form>
       </div>
     {% endif %}

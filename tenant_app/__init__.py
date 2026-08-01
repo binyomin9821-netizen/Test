@@ -19,6 +19,7 @@ def create_app():
 
     from tenant_app.auth import auth_bp
     from tenant_app.routes_admin import admin_bp
+    from tenant_app.routes_intake import intake_bp
     from tenant_app.routes_pm import pm_bp
     from tenant_app.routes_public import public_bp
 
@@ -26,6 +27,7 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(pm_bp)
+    app.register_blueprint(intake_bp)
 
     @app.route("/uploads/<path:filename>")
     @login_required

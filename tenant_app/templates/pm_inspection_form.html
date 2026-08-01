@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Inspection Scoring #{{ application.id }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <a href="{{ url_for('pm.application_detail', application_id=application.id) }}">&larr; Back to application</a>
+    <a href="{{ url_for('auth.logout') }}">Log out</a>
+  </div>
+  <div class="page">
+    <h1>Inspection Scoring — #{{ application.id }}</h1>
+    <p class="subtitle">{{ application.full_name }} · {{ application.property.name }}</p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}<div class="notice">{{ message }}</div>{% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="card">
+      <p style="margin:0;">Photos: <strong>{{ photo_count }}</strong> uploaded ({{ min_photos }} required, {{ max_photos }} max).
+        {% if photo_count < min_photos %}
+          <a href="{{ url_for('pm.application_detail', application_id=application.id) }}">Upload {{ min_photos - photo_count }} more</a> before submitting.
+        {% endif %}
+      </p>
+    </div>
+
+    <form class="card" method="post" action="{{ url_for('pm.inspection_form', application_id=application.id) }}" enctype="multipart/form-data" id="inspection-form">
+      <fieldset>
+        <legend>Scores (1 = worst, 10 = best)</legend>
+        {% set submission = application.inspection_submission %}
+        {% for key, label in score_criteria %}
+          <label for="{{ key }}">{{ label }}</label>
+          <select id="{{ key }}" name="{{ key }}" required>
+            <option value="" disabled {% if not submission %}selected{% endif %}>Select a score...</option>
+            {% for n in range(1, 11) %}
+              <option value="{{ n }}" {% if submission and submission[key] == n %}selected{% endif %}>{{ n }}</option>
+            {% endfor %}
+          </select>
+        {% endfor %}
+      </fieldset>
+
+      <fieldset>
+        <legend>Description</legend>
+        <label for="description">Anything else worth noting?</label>
+        <textarea id="description" name="description" rows="4" style="width:100%; padding:9px 10px; border:1px solid #c7cad2; border-radius:6px; font-family:inherit; font-size:1rem;">{{ submission.description if submission else '' }}</textarea>
+      </fieldset>
+
+      <fieldset>
+        <legend>Voice Note (optional)</legend>
+        <p class="subtitle" style="margin-top:0;">
+          Record a short note in your browser, or upload an audio file if recording doesn't work on your device.
+        </p>
+
+        <div id="recorder-controls">
+          <button type="button" id="record-btn" style="margin-top:0;">Start Recording</button>
+          <button type="button" id="stop-btn" style="margin-top:0; display:none;" class="deny">Stop Recording</button>
+          <span id="record-status" class="subtitle" style="margin:0 0 0 10px;"></span>
+        </div>
+        <audio id="preview-player" controls style="display:none; margin-top:12px; width:100%;"></audio>
+
+        <label for="voice_note_file" style="margin-top:16px;">Or upload an audio file</label>
+        <input type="file" id="voice_note_file" name="voice_note_file" accept="audio/*">
+
+        {% if submission and submission.voice_note_path %}
+          <p class="subtitle" style="margin-top:12px;">A voice note is already attached. Uploading or recording a new one will replace it.</p>
+        {% endif %}
+      </fieldset>
+
+      <button type="submit" {% if photo_count < min_photos %}disabled title="Upload more photos first"{% endif %}>Submit Inspection</button>
+    </form>
+  </div>
+
+  <script>
+    // Records audio in the browser (Chrome/Firefox/Edge/Safari 14.1+ on
+    // desktop; support on older/other mobile browsers varies -- the file
+    // upload field above always works as a fallback).
+    (function () {
+      const recordBtn = document.getElementById('record-btn');
+      const stopBtn = document.getElementById('stop-btn');
+      const status = document.getElementById('record-status');
+      const player = document.getElementById('preview-player');
+      const fileInput = document.getElementById('voice_note_file');
+
+      if (!navigator.mediaDevices || !window.MediaRecorder) {
+        status.textContent = 'Recording isn\'t supported in this browser -- use the file upload below.';
+        recordBtn.disabled = true;
+        return;
+      }
+
+      let mediaRecorder, chunks = [];
+
+      recordBtn.addEventListener('click', async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          chunks = [];
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+          mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+            player.src = URL.createObjectURL(blob);
+            player.style.display = 'block';
+            try {
+              const file = new File([blob], 'voice_note.webm', { type: blob.type });
+              const dt = new DataTransfer();
+              dt.items.add(file);
+              fileInput.files = dt.files;
+              status.textContent = 'Recording attached.';
+            } catch (err) {
+              status.textContent = 'Recorded, but couldn\'t attach automatically -- please use the file upload below instead.';
+            }
+            stream.getTracks().forEach((t) => t.stop());
+          };
+          mediaRecorder.start();
+          recordBtn.style.display = 'none';
+          stopBtn.style.display = 'inline-block';
+          status.textContent = 'Recording...';
+        } catch (err) {
+          status.textContent = 'Couldn\'t access the microphone -- use the file upload below instead.';
+        }
+      });
+
+      stopBtn.addEventListener('click', () => {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+        stopBtn.style.display = 'none';
+        recordBtn.style.display = 'inline-block';
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -27,7 +27,7 @@
       <div class="card">
         <p>Application #{{ application.id }} to <strong>{{ application.property.name }}</strong></p>
         <p>Status:
-          <span class="status {{ application.status|lower }}">{{ application.status }}</span>
+          <span class="status {{ application.status_css_class }}">{{ application.status }}</span>
         </p>
         <p>Submitted: {{ application.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
         {% if application.decision_date %}<p>Decision date: {{ application.decision_date.strftime('%Y-%m-%d') }}</p>{% endif %}

@@ -132,6 +132,9 @@ a { color: #2f5fd6; }
 .status.approved { background: #dcf5e0; color: #146c2e; }
 .status.denied { background: #fdecea; color: #8a1f13; }
 .status.open { background: #eef0f4; color: #3a4152; }
+.status.active { background: #dcf5e0; color: #146c2e; }
+.status.waitlisted { background: #fff4d6; color: #8a6100; }
+.status.inspection { background: #e3ddfa; color: #3f2c8a; }
 
 .photo-grid {
     display: grid;
@@ -166,3 +169,41 @@ a { color: #2f5fd6; }
 
 .detail-grid dt { color: #5a6072; }
 .detail-grid dd { margin: 0; }
+
+.intake-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.intake-image-pane {
+    position: sticky;
+    top: 20px;
+}
+
+@media (max-width: 800px) {
+    .intake-grid { grid-template-columns: 1fr; }
+    .intake-image-pane { position: static; }
+}
+
+.score-bar-track {
+    background: #eef0f4;
+    border-radius: 999px;
+    height: 10px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.score-bar-fill {
+    background: #2f5fd6;
+    height: 100%;
+    border-radius: 999px;
+}
+
+.countdown {
+    font-weight: 600;
+}
+
+.countdown.warning { color: #8a6100; }
+.countdown.danger { color: #8a1f13; }

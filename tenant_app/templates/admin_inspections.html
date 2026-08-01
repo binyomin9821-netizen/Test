@@ -11,12 +11,13 @@
     <span>
       <a href="{{ url_for('admin.properties') }}">Properties</a> ·
       <a href="{{ url_for('admin.property_managers') }}">Property Managers</a> ·
+      <a href="{{ url_for('admin.testing_tools') }}">Testing Tools</a> ·
       <a href="{{ url_for('auth.logout') }}">Log out</a>
     </span>
   </div>
   <div class="page wide">
     <h1>Inspection Slots</h1>
-    <p class="subtitle">Add times applicants can pick from. Once an applicant books a slot, it disappears from their options.</p>
+    <p class="subtitle">Add times applicants can pick from (self-booked inspections). Once an applicant books a slot, it disappears from their options.</p>
 
     <div class="card">
       <legend>Add a Time Slot</legend>
@@ -24,6 +25,18 @@
         <label for="slot_time">Date and Time</label>
         <input type="datetime-local" id="slot_time" name="slot_time" required>
         <button type="submit">Add Slot</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <legend>Inspection SLA Check</legend>
+      <p class="subtitle" style="margin-bottom:12px;">
+        Normally runs automatically (at most once an hour) whenever the admin or PM
+        dashboard loads. Use this to run it immediately -- useful right after using
+        the Testing Tools page to backdate a clock.
+      </p>
+      <form method="post" action="{{ url_for('admin.run_sla_check_now') }}">
+        <button type="submit">Run SLA Check Now</button>
       </form>
     </div>
 

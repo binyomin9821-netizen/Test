@@ -18,6 +18,15 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@example.com")
 ADMIN_BOOTSTRAP_PASSWORD = os.environ.get("ADMIN_BOOTSTRAP_PASSWORD", "changeme123")
 
+# Encrypts sensitive fields (currently just SSN) at rest. The fallback
+# below is NOT secret -- it's baked into this file -- and is only here so
+# the app doesn't crash if you forget to set one. Generate your own real
+# key (see README.md "Encryption key") and put it in .env before you
+# ever store a real SSN.
+FIELD_ENCRYPTION_KEY = os.environ.get(
+    "FIELD_ENCRYPTION_KEY", "ZGV2LW9ubHktaW5zZWN1cmUtZmFsbGJhY2sta2V5MzI="
+)
+
 # --- Email notifications (optional) ---
 # Same as before: off by default, Approve/Deny work either way. See
 # README.md "Setting up tenant emails" for how to fill these in.

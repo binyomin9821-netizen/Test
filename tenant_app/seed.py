@@ -4,7 +4,7 @@ bootstrap admin login if none exists yet, and fills in sample data (only
 when the properties table is empty) so there's something to look at
 right away. Safe to call every time the app starts.
 """
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from tenant_app import config
 from tenant_app.extensions import db
@@ -54,7 +54,10 @@ def _add_sample_data():
             ))
     db.session.commit()
 
-    pm1 = User(name="Pat Rivera", email="pat.rivera@example.com", role="property_manager")
+    pm1 = User(
+        name="Pat Rivera", email="pat.rivera@example.com", role="property_manager",
+        supervisor_email="supervisor@example.com",
+    )
     pm1.set_password("changeme456")
     pm2 = User(name="Sam Chen", email="sam.chen@example.com", role="property_manager")
     pm2.set_password("changeme456")
@@ -82,12 +85,21 @@ def _add_sample_data():
                     phone="555-010-9012", email="marcus.webb@example.com",
                     current_address="17 Pine Rd, Springfield", marital_status="Divorced",
                     number_of_children=1, status="Denied"),
+        # Approved for inspection, assigned to Pat Rivera (Maple Court) --
+        # for trying out the Phase 4 SLA countdown/reminders right away.
+        # See "Testing the inspection SLA" in README.md.
+        Application(property_id=properties[0].id, full_name="Dana Kim",
+                    phone="555-010-3456", email="dana.kim@example.com",
+                    current_address="200 Willow Way, Springfield", marital_status="Single",
+                    number_of_children=0, status="Approved for inspection",
+                    inspection_status="Scheduled"),
     ]
     db.session.add_all(applications)
     db.session.commit()
 
     applications[1].decision_date = date(2026, 7, 15)
     applications[2].decision_date = date(2026, 7, 20)
+    applications[3].inspection_requested_at = datetime.now(timezone.utc) - timedelta(days=1)
     db.session.commit()
 
     # Matches the format the "Date and Time" field on the admin Inspection

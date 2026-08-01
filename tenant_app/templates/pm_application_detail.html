@@ -39,7 +39,7 @@
     </div>
 
     <div class="card">
-      <legend>Inspection Photos</legend>
+      <legend>Inspection Photos ({{ photos|length }} uploaded, {{ min_photos }} required)</legend>
       {% if photos %}
         <div class="photo-grid">
           {% for photo in photos %}
@@ -61,9 +61,18 @@
 
     {% if application.inspection_status != 'Completed' %}
       <div class="card">
-        <form method="post" action="{{ url_for('pm.mark_complete', application_id=application.id) }}">
-          <button type="submit">Mark Inspection Complete</button>
-        </form>
+        {% if photos|length >= min_photos %}
+          <p class="subtitle" style="margin-top:0;">Enough photos are uploaded. Continue to fill out the scoring form.</p>
+          <a class="button" href="{{ url_for('pm.inspection_form', application_id=application.id) }}">Continue to Inspection Scoring</a>
+        {% else %}
+          <p class="subtitle" style="margin:0;">
+            Upload at least {{ min_photos - photos|length }} more photo(s) before you can continue to scoring.
+          </p>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="card">
+        <a class="button" href="{{ url_for('pm.inspection_form', application_id=application.id) }}">View / Edit Submitted Inspection</a>
       </div>
     {% endif %}
   </div>

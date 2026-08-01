@@ -2,71 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Apartment Application</title>
+  <title>How to Apply</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <div class="page">
-    <h1>Apartment Application</h1>
-    <p class="subtitle">Please fill out the form below to apply.
-      Already applied? <a href="{{ url_for('public.check_status') }}">Check your status</a>.</p>
+    <h1>How to Apply</h1>
+    <p class="subtitle">
+      Already applied? <a href="{{ url_for('public.check_status') }}">Check your status</a>.
+    </p>
 
-    {% if errors %}
-      <div class="errors">
-        <ul style="margin:0; padding-left:18px;">
-          {% for error in errors %}<li>{{ error }}</li>{% endfor %}
-        </ul>
-      </div>
-    {% endif %}
+    <div class="card">
+      <p>Applications for our affordable-housing properties are submitted on paper. Here's how it works:</p>
+      <ol style="padding-left: 20px; line-height: 1.8;">
+        <li>Download and print the application below.</li>
+        <li>Fill it out by hand, in black or blue ink, one letter or number per box.</li>
+        <li>Sign and date it, then bring or mail it to the property you're applying to, or to our leasing office.</li>
+        <li>Staff will scan your form and process your application. They'll give you a reference number.</li>
+        <li>Use that reference number and your email to check your status any time using the link above.</li>
+      </ol>
+      <a class="button" href="{{ url_for('public.application_pdf') }}" target="_blank">Download Application (PDF)</a>
+    </div>
 
-    <form class="card" method="post" action="{{ url_for('public.apply') }}">
-      <fieldset>
-        <legend>Which property are you applying to?</legend>
-        <label for="property_id">Property</label>
-        <select id="property_id" name="property_id" required>
-          <option value="" disabled {% if not form.get('property_id') %}selected{% endif %}>Select a property...</option>
-          {% for property in properties %}
-            <option value="{{ property.id }}" {% if form.get('property_id')|string == property.id|string %}selected{% endif %}>
-              {{ property.name }} - {{ property.address }}
-            </option>
-          {% endfor %}
-        </select>
-      </fieldset>
-
-      <fieldset>
-        <legend>Part 1: Basic Information</legend>
-
-        <label for="full_name">Full Name</label>
-        <input type="text" id="full_name" name="full_name" value="{{ form.get('full_name', '') }}" required>
-
-        <label for="phone">Phone</label>
-        <input type="tel" id="phone" name="phone" value="{{ form.get('phone', '') }}" required>
-
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" value="{{ form.get('email', '') }}" required>
-
-        <label for="current_address">Current Address</label>
-        <input type="text" id="current_address" name="current_address" value="{{ form.get('current_address', '') }}" required>
-      </fieldset>
-
-      <fieldset>
-        <legend>Part 2: Household Information</legend>
-
-        <label for="marital_status">Marital Status</label>
-        <select id="marital_status" name="marital_status">
-          <option value="" {% if not form.get('marital_status') %}selected{% endif %}>Prefer not to say</option>
-          <option value="Single" {% if form.get('marital_status') == 'Single' %}selected{% endif %}>Single</option>
-          <option value="Married" {% if form.get('marital_status') == 'Married' %}selected{% endif %}>Married</option>
-          <option value="Divorced" {% if form.get('marital_status') == 'Divorced' %}selected{% endif %}>Divorced</option>
-          <option value="Widowed" {% if form.get('marital_status') == 'Widowed' %}selected{% endif %}>Widowed</option>
-        </select>
-
-        <label for="number_of_children">Number of Children</label>
-        <input type="number" id="number_of_children" name="number_of_children" min="0" step="1" value="{{ form.get('number_of_children', '') }}">
-      </fieldset>
-
-      <button type="submit">Submit Application</button>
-    </form>
+    <div class="card">
+      <legend>Properties</legend>
+      <ul style="padding-left: 20px; line-height: 1.8; margin: 0;">
+        {% for property in properties %}
+          <li>{{ property.name }} — {{ property.address }}</li>
+        {% else %}
+          <li>No properties are listed yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
   </div>
 </body>
 </html>

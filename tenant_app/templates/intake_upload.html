@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Upload Paper Application</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <a href="{{ url_for('admin.dashboard') if current_user.is_admin else url_for('pm.dashboard') }}">&larr; Back</a>
+    <a href="{{ url_for('auth.logout') }}">Log out</a>
+  </div>
+  <div class="page">
+    <h1>Upload a Paper Application</h1>
+    <p class="subtitle">
+      Upload a clear photo or scan of the completed, signed paper form. The system
+      will attempt to read it automatically (OCR), but you'll review and correct
+      every field on the next screen before anything is saved.
+    </p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}<div class="notice">{{ message }}</div>{% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form class="card" method="post" action="{{ url_for('intake.upload') }}" enctype="multipart/form-data">
+      <label for="scan">Photo or Scan of Completed Form</label>
+      <input type="file" id="scan" name="scan" accept="image/*,.pdf" required>
+      <button type="submit">Upload and Read Form</button>
+    </form>
+
+    {% if not properties %}
+      <div class="errors">You don't have any properties assigned yet -- ask your admin.</div>
+    {% endif %}
+  </div>
+</body>
+</html>

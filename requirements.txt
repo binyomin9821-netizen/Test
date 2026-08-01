@@ -2,3 +2,7 @@ Flask==3.0.3
 Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
 psycopg2-binary==2.9.9
+cryptography==43.0.1
+reportlab==4.2.5
+pytesseract==0.3.13
+Pillow==10.4.0

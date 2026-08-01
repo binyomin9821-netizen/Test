@@ -1,194 +1,332 @@
 # Tenant Application System
 
-The foundation for a real, portfolio-scale version of the tenant
-application pilot: real logins with roles, a production-grade database
-(PostgreSQL instead of the single-file version), and a data model ready
-for the features coming in later phases (paper-application OCR, vacancy
-and waitlist logic, inspection scheduling with deadlines, and PM
-scoring/photos/voice notes). None of those later features are built yet
--- this stage is purely the new foundation, with the application form and
-decision-maker dashboard you already had moved onto it.
+A portfolio-scale system for centralizing affordable-housing applications:
+real logins with roles, PostgreSQL, a paper-first application with OCR
+intake, vacancy/waitlist tracking, and an inspection workflow with a
+5-day SLA, reminders, escalation, PM scoring, photos, and voice notes.
 
 **This is still meant to run only on your own computer.** It is not on
 the internet and nobody outside your computer can reach it.
 
-## What's in this stage
+**Read "Known limitations" near the bottom before you rely on this.**
+This was built without the ability to actually run the app in the
+environment it was built in (details below) -- it needs a real
+end-to-end test on your machine before you trust it with real data.
 
-- **Public application form** (`/apply`) -- unchanged from before: pick a
-  property, fill in basic + household info, submit, get a reference
-  number.
-- **Applicant status check** (`/status`) -- unchanged: look up your
-  status and book an inspection time slot with your reference number and
-  email.
-- **Admin** -- logs in with an email + password (not a shared password
-  anymore). Sees every property, every application, and can:
-  - Approve/Deny applications.
-  - Add properties (`/admin/properties`), each with a manager email and
-    phone number, and see outstanding (Pending) applications per
-    property.
-  - Create Property Manager logins and assign them properties
-    (`/admin/property-managers`).
-  - Add inspection time slots (`/admin/inspections`).
-- **Property Manager** -- logs in with their own email + password, and
-  sees **only** the properties assigned to them: those properties'
-  scheduled inspections, and can upload inspection photos / mark an
-  inspection complete. (There's no separate "inspector" login anymore --
-  that role is folded into Property Manager for now, per your call. It's
-  easy to split back out later if you want a dedicated inspector role.)
+---
 
-## What's deliberately not built yet
+## The four roles
 
-Everything below is scoped for later phases, on purpose -- the data
-model is ready for them, but none of the workflow exists yet:
+1. **Applicant** -- no login. Downloads a printable PDF application,
+   fills it out by hand, and turns it in to the property. Can later look
+   up their own status and (optionally) self-book an inspection time at
+   `/status`.
+2. **Admin** (you) -- sees the entire portfolio. Approves/denies
+   applications, manages properties and units, creates Property Manager
+   logins, manages the waitlist, and reviews completed inspections.
+3. **Property Manager** -- logs in with their own email + password, sees
+   **only** their assigned properties, and handles inspections: uploads
+   photos, scores the 10 criteria, and submits. (There's no separate
+   "inspector" role -- that's folded into Property Manager for now, per
+   an earlier decision. Easy to split out later if needed.)
+4. **(Held back) Inspector as a separate role** -- not built. See above.
 
-- The real, comprehensive affordable-housing application (SSN,
-  household members, income breakdown, etc.) and paper-form OCR.
-- Vacancy tracking and waitlist logic (the `Waitlisted` status exists as
-  a possible value, but nothing sets it automatically, and units don't
-  have an admin screen to mark vacant/occupied yet).
-- Per-property dashboards and a property picker for 200+ properties.
-- The 5-day inspection SLA, countdown, reminders, and escalation to a
-  supervisor.
-- The 10-criteria PM scoring form, 10-15 required photos, and voice
-  notes.
+---
 
-## A structural choice worth knowing about
+## The full workflow, start to finish
 
-The old version used SQLite (one file) and hand-written SQL. This
-version uses PostgreSQL and an ORM (SQLAlchemy), which is the standard
-way to build something meant to grow -- but it means schema changes
-(adding new columns/tables in later phases) need a migration strategy.
-For this stage, the app just creates all tables fresh on first startup
-(`db.create_all()`), which is simple and reliable. Before Phase 2 adds
-new fields (SSN, income, household members, etc.), it's worth adding a
-proper migration tool (Flask-Migrate/Alembic) so schema changes can be
-applied without wiping data -- flagging that now so it isn't a surprise
-later.
+1. **Apply.** An applicant goes to `/apply`, downloads the PDF, fills it
+   out by hand, signs it, and brings/mails it to a property.
+2. **Intake.** Admin or a property manager goes to **Upload a paper
+   application**, uploads a photo/scan of the completed form. OCR
+   (Tesseract) takes a rough first pass at reading it. A human then
+   reviews every field side-by-side with the scanned image and corrects
+   anything wrong -- **nothing is saved until a person confirms it.**
+3. **Auto-tagging.** On save, the application is automatically tagged
+   `Active — unit available` if that property currently has a vacant
+   unit, or `Waitlisted` if it doesn't. This happens with no manual step.
+4. **Waitlist management.** Admin can see each property's waitlist, in
+   first-come-first-served order, from that property's dashboard. Moving
+   someone off the waitlist (when a unit opens up) or bumping someone
+   ahead of the FCFS order always requires typing a reason -- this gets
+   logged permanently for compliance. Nothing happens automatically.
+5. **Approve for inspection.** Admin reviews an Active or Waitlisted
+   application and clicks **Approve for Inspection**. This emails the
+   assigned property manager and starts a 5-calendar-day countdown.
+6. **PM does the inspection.** The property manager sees the countdown
+   on their dashboard (turning red as it nears zero), gets a daily email
+   reminder while it's pending, uploads 10-15 photos of the applicant's
+   current home, records or uploads a voice note (optional), scores 10
+   criteria from 1-10, and submits.
+7. **Overdue escalation.** If 5 days pass with no submission, the
+   inspection is marked Overdue and both you (admin) and the PM's
+   supervisor (if one is on file) get emailed.
+8. **Final decision.** Admin reviews the scores, photos, and voice note,
+   then clicks Final Approve or Final Deny. The applicant gets emailed
+   (if email is turned on) and can also check `/status` any time.
+
+Every notification the system sends (or tries to send) is logged --
+type, recipient, timestamp, success/failure -- so "was X actually
+notified" is always answerable later.
+
+---
+
+## What's deliberately not built
+
+- **The disability/accommodation question.** Scoped for this phase, held
+  back on purpose pending your legal counsel's review of exact wording
+  and handling -- there is **no** disability field anywhere in this
+  system. Don't add one without checking first; see the comment at the
+  top of `tenant_app/models.py`.
+- **SMS/text notifications.** Phase 4 asked about Twilio; this pass is
+  **email-only**, per your call. See "Adding SMS later" below for what
+  that would take.
+- **Real-time chat/dispute tools, RealPage integration, scoring-based
+  auto-decisions.** Not asked for, not built.
+
+---
+
+## Two structural choices worth knowing about
+
+**No migration tool yet.** This app creates all its tables fresh on
+first startup (`db.create_all()`) rather than using Alembic/Flask-Migrate.
+That's fine for getting started, but it means if you change the schema
+later and already have real data, you'll need to either add a migration
+tool at that point or write the `ALTER TABLE` yourself -- `db.create_all()`
+only creates tables that don't exist yet, it won't update existing ones.
+
+**No real task scheduler.** The 5-day inspection SLA check
+(reminders/escalation) isn't running on a cron job -- it runs
+automatically, at most once an hour, whenever the admin or PM dashboard
+loads, plus on-demand via "Run SLA Check Now" on the Inspection Slots
+page. That's fine for a pilot with people checking in during the day,
+but isn't a substitute for a real scheduled job (a cron container, or
+Celery beat) if this needs to catch overdue inspections reliably even
+when nobody's logged in for a while.
 
 ---
 
 ## Running it for the first time
 
-This version runs in **Docker** instead of installing Python directly.
-It's a bit more to install once, but after that, everything -- the
-database included -- starts with one command, and you won't hit the
-"pip is not recognized" type of issues from before.
-
 ### 1. Install Docker Desktop
 
 1. Go to **docker.com/products/docker-desktop** and download it for
    Windows.
-2. Run the installer. Accept the defaults.
-3. It'll ask you to restart your computer -- do that.
-4. After restarting, open the **Docker Desktop** app from your Start
-   menu and leave it running in the background (look for the whale icon
-   in your system tray, near the clock). Docker Desktop needs to be
-   running any time you use the app.
+2. Run the installer, accept the defaults, restart when it asks.
+3. After restarting, open **Docker Desktop** from your Start menu and
+   leave it running in the background (look for the whale icon near the
+   clock). It needs to be running any time you use this app.
+4. If it prompts you to install "WSL2," let it -- one-time step.
 
-   Note: on some Windows setups, Docker Desktop will prompt you to
-   install "WSL2" (Windows Subsystem for Linux) the first time -- just
-   follow its prompts and let it install; it's a one-time step.
+### 2. Get the project files
 
-### 2. Get the project files onto your computer
-
-Same as before: download this project's files as a ZIP from GitHub and
-extract them (right-click the ZIP → Extract All). Keep opening folders
-until you see `docker-compose.yml`, `run.py`, and a `tenant_app` folder
-directly -- that's the one you want to be in.
+Download this project as a ZIP from GitHub, extract it (right-click →
+Extract All), and open folders until you see `docker-compose.yml`,
+`run.py`, and a `tenant_app` folder directly.
 
 ### 3. Set up your settings file
 
-1. In that folder, find `.env.example`.
-2. Make a copy of it in the same folder, and rename the copy to exactly
-   `.env` (just `.env`, nothing before the dot).
-   - **On Windows**, if you don't see the ".example" part of the
-     filename, File Explorer is hiding file extensions. Go to the
-     **View** tab in File Explorer and check "File name extensions" to
-     turn them on.
-3. Open `.env` in Notepad and change at least these two lines to your
-   own values:
+1. Find `.env.example` in that folder. Copy it and rename the copy to
+   exactly `.env`.
+   - If you can't see the ".example" part of the filename, turn on
+     "File name extensions" in File Explorer's **View** tab.
+2. Open `.env` in Notepad and set:
    ```
    ADMIN_EMAIL=admin@example.com
    ADMIN_BOOTSTRAP_PASSWORD=changeme123
    ```
-   This becomes your admin login the first time the app starts. You can
-   leave everything else in `.env` as-is for now.
+   to your own values -- this becomes your admin login the first time
+   the app starts.
+3. **Generate a real encryption key** (used to encrypt SSNs at rest) --
+   see "Encryption key" below. Don't skip this before storing a real SSN.
 
-### 4. Open a terminal in that folder
+### 4. Open a terminal and start it
 
-Same trick as before: open the folder in File Explorer, click in the
-address bar, type `cmd`, press Enter.
-
-### 5. Start everything with one command
-
-```
-docker compose up --build
-```
-
-The first time, this downloads and builds everything, which can take a
-few minutes -- you'll see a lot of text scroll by, that's normal. When
-it settles down and you see log lines mentioning the app running, it's
-ready.
-
-Open your browser to:
-
-```
-http://127.0.0.1:5000
-```
-
-To **stop** it, go back to that terminal window and press `Ctrl+C`.
-
----
+1. Open the project folder in File Explorer, click the address bar, type
+   `cmd`, press Enter.
+2. Run:
+   ```
+   docker compose up --build
+   ```
+   The first run downloads and builds everything -- can take a few
+   minutes, lots of text will scroll by, that's normal.
+3. Open your browser to `http://127.0.0.1:5000`.
+4. `Ctrl+C` in the terminal to stop it.
 
 ## Running it again later
 
-1. Make sure **Docker Desktop is running** (open it from the Start
-   menu if it isn't).
-2. Open a terminal in the project folder (step 4 above).
-3. Type:
-   ```
-   docker compose up
-   ```
-   (no `--build` needed unless you've downloaded a code update).
-4. Open `http://127.0.0.1:5000` in your browser.
-5. `Ctrl+C` in the terminal when you're done.
+1. Make sure Docker Desktop is running.
+2. Open a terminal in the project folder, run `docker compose up` (no
+   `--build` needed unless you downloaded a code update).
+3. `Ctrl+C` when done.
 
-Your data persists between runs automatically -- it's stored in a Docker
-volume, not inside the containers themselves, so stopping and starting
-doesn't lose anything.
+Your data persists in a Docker volume between runs.
 
 ### Getting a code update later
 
-Same as before: stop the app, download the new ZIP, extract it, but this
-time **copy your existing `.env` file** into the new folder before
-starting (so you don't lose your passwords), then run
-`docker compose up --build` (the `--build` matters this time, so it
-picks up the code changes).
+Stop the app, download the new ZIP, extract it, **copy your existing
+`.env` file into the new folder** first (so you don't lose your
+passwords/keys), then `docker compose up --build`.
+
+---
+
+## Encryption key
+
+SSNs are encrypted before they're stored. Generate a real key before you
+store any real one:
+
+1. With Docker Desktop running and the project folder open in a
+   terminal, run:
+   ```
+   docker compose run --rm web python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+   ```
+2. Copy the output into `.env`:
+   ```
+   FIELD_ENCRYPTION_KEY=the-key-you-just-generated
+   ```
+3. **Back this up somewhere safe, separate from your database backups.**
+   If this key is ever lost, every encrypted SSN becomes permanently
+   unreadable -- there's no way to recover it without the key.
+4. Restart the app (`Ctrl+C`, then `docker compose up`).
+
+SSNs are never displayed in full anywhere in the app -- only the last 4
+digits, everywhere, always.
 
 ---
 
 ## Logging in
 
-- **Admin:** `http://127.0.0.1:5000/login`, using the `ADMIN_EMAIL` /
-  `ADMIN_BOOTSTRAP_PASSWORD` you set in `.env`.
-- **Property Managers:** same login page. The first time the app starts
-  with an empty database, it creates two sample PM logins so you can see
-  the role-based access working right away:
-  - `pat.rivera@example.com` / `changeme456` (assigned to Maple Court
-    Apartments and Riverside Commons)
-  - `sam.chen@example.com` / `changeme456` (assigned to Oakwood Terrace
-    and Sunset Gardens)
+- **Admin:** `http://127.0.0.1:5000/login`, using your `ADMIN_EMAIL` /
+  `ADMIN_BOOTSTRAP_PASSWORD` from `.env`.
+- **Property Managers:** same login page. Sample logins are created the
+  first time the app starts with an empty database:
+  - `pat.rivera@example.com` / `changeme456` (Maple Court Apartments,
+    Riverside Commons)
+  - `sam.chen@example.com` / `changeme456` (Oakwood Terrace, Sunset
+    Gardens)
 
-  For real property managers, log in as admin and use the **Property
-  Managers** page to create their accounts and assign properties --
-  don't reuse the sample logins for real staff.
+  For real staff, log in as admin and use **Property Managers** to
+  create their accounts -- don't reuse the sample logins.
+
+---
+
+## Testing the paper-application intake
+
+1. Log in as admin (or a PM).
+2. Click **Upload a paper application**.
+3. For a first try, you don't need a real scanned form -- any photo or
+   screenshot works, since Tesseract's guess is only a starting point
+   you'll correct anyway. Or print the PDF from `/apply`, fill in a
+   couple of fields by hand, and photograph it with your phone.
+4. On the review screen, check/correct every field -- especially the
+   property (OCR's guess is pre-selected, but verify it), and check the
+   "signed and dated" box before saving.
+5. Save it, and it'll show up on the dashboard with status `Active — unit
+   available` or `Waitlisted` depending on whether that property has a
+   vacant unit (see "Testing vacancy/waitlist" below).
+
+**On OCR accuracy:** Tesseract is free and runs locally, but it's built
+for printed text, not handwriting -- expect it to get most handwritten
+fields wrong or blank. That's why every field is editable and nothing
+saves without a human confirming it. If accuracy matters more than cost
+for real use, AWS Textract or Google Document AI do meaningfully better
+on handwriting (roughly $0.05-$0.065/page at typical volumes) -- swapping
+them in would mean replacing the `extract_text()` function in
+`tenant_app/ocr.py` with an API call and adding your cloud credentials to
+`.env`; the rest of the review/save flow wouldn't need to change.
+
+**On where scanned images are stored:** locally, inside the Docker
+volume (`instance/uploads/`), the same as inspection photos. That's
+simple and keeps this self-contained, which is right for a pilot. At
+real portfolio scale (thousands of scans + inspection photos), a cloud
+object store (S3 or similar) would be the better long-term choice --
+more reliable, better backups, and it stops a single server's disk from
+being the thing that runs out of space. Worth revisiting before this
+goes into full production; the code change would be contained to how
+photos are saved/served (`routes_intake.py`, `routes_pm.py`,
+`uploaded_file` in `tenant_app/__init__.py`), not the database schema.
+
+---
+
+## Testing vacancy/waitlist
+
+1. Log in as admin, go to **Properties**, click a property to open its
+   dashboard.
+2. Under **Units**, click **Mark Occupied** on the one vacant unit (each
+   sample property starts with 1 vacant, 3 occupied).
+3. Now every *new* application to that property gets tagged
+   `Waitlisted` instead of `Active — unit available` (try uploading
+   another paper application to see it).
+4. With someone on the waitlist, click **Mark Vacant** on a unit again
+   -- the waitlist panel now shows a **Move to Active** button. It
+   requires a reason (even for the person already at the top of the
+   list) -- that's intentional, so there's always a compliance record
+   of who moved someone and why. Nothing happens silently.
+5. **Prioritize** lets you bump someone ahead of FCFS order (e.g. for a
+   reasonable accommodation) -- also always requires a reason, logged
+   the same way.
+
+---
+
+## Testing the inspection SLA (without waiting 5 real days)
+
+1. Log in as admin, open the sample application **Dana Kim** (already
+   seeded in `Approved for inspection` status).
+2. Go to **Testing Tools** (in the nav bar).
+3. Select Dana Kim, set "days old" to `5`, click **Set Clock**.
+4. Go to **Inspection Slots** → **Run SLA Check Now**.
+5. Refresh Dana Kim's application page -- inspection status should now
+   show **Overdue**, and (if email is turned on) both the admin email
+   and Pat Rivera's supervisor email (seeded as `supervisor@example.com`)
+   will have gotten an escalation notice -- check the flash message and,
+   if email is on, your inbox.
+6. Try `days old = 2` instead to see the daily-reminder path (PM gets a
+   reminder, nothing escalates yet) rather than the overdue path.
+
+---
+
+## Testing a full inspection submission (Phase 5)
+
+1. Log in as `pat.rivera@example.com` / `changeme456`.
+2. Open Dana Kim's application from the dashboard.
+3. Upload 10 photos (any images work for testing -- the count is what's
+   enforced, not content). Watch the counter update.
+4. Once 10+ are uploaded, click **Continue to Inspection Scoring**.
+5. Try clicking **Allow** on the microphone permission prompt and
+   recording a short voice note, or skip it and use the file-upload
+   fallback instead -- both are optional.
+6. Score all 10 criteria, add a note, submit.
+7. Log back in as admin and open Dana Kim's application -- you should
+   see all 10 scores as bars, the photo gallery, your notes, and an
+   audio player if you attached a voice note. **Final Approve**/**Final
+   Deny** buttons are now available.
+
+**Voice note browser support:** works well in current Chrome, Firefox,
+and Edge on desktop and Android, and Safari 14.1+ on desktop. Mobile
+Safari (iOS) support varies by version and can be flaky with
+microphone permissions in some setups -- if recording doesn't work, the
+file-upload field next to it is the deliberate fallback (record with any
+voice memo app, then upload the file).
+
+---
+
+## Adding SMS later
+
+Not built in this pass (email-only, per your call). When you're ready:
+Twilio is the standard choice -- sign up, buy a phone number (~$1/month),
+and SMS costs roughly $0.0079/message in the US. You'd add
+`TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` to
+`.env`, and add an SMS-sending function alongside the existing ones in
+`tenant_app/mail.py` (the notification call sites in `sla.py` and
+`routes_admin.py` already have PM/admin objects in scope, so wiring in a
+second channel wouldn't need those call sites restructured, just a
+phone-number field added to the User model).
 
 ---
 
 ## Setting up tenant emails (optional)
 
-Same feature as before, just configured in `.env` now instead of
-`config.py`:
+Off by default. To turn on:
 
 ```
 EMAIL_ENABLED=true
@@ -196,20 +334,56 @@ EMAIL_ADDRESS=your-real-gmail-address@gmail.com
 EMAIL_APP_PASSWORD=the16characterapppassword
 ```
 
-See the earlier instructions for creating a Gmail "App Password" (turn
-on 2-Step Verification, then create one at
-**myaccount.google.com/apppasswords**). After editing `.env`, stop the
-app and run `docker compose up` again for the change to take effect.
+Create the Gmail App Password at **myaccount.google.com/apppasswords**
+(requires 2-Step Verification turned on first). Restart the app after
+editing `.env`.
 
 ---
 
-## A note on the two protected-class questions
+## A note on protected-class questions
 
-Unchanged from before: the form asks for **marital status** and
-**number of children**. These are Fair Housing–protected categories, and
-the code never uses them in the Approve/Deny decision -- they're shown
-to the decision-maker for context only. Worth a compliance check-in
-before real applicants use this.
+The application form asks for **marital status** and **number of
+children/dependents** -- Fair Housing-protected categories. The code
+never uses them in any decision -- they're shown for context only.
+There's deliberately no disability question at all (see above). Worth a
+compliance review before real applicants use this, especially around
+the income/employment fields new in this phase and the waitlist
+override process -- the override reason is always logged, but the
+*content* of an admin's stated reason isn't validated for compliance by
+the software; that's a human judgment call each time.
+
+---
+
+## Known limitations (please read before trusting this with real data)
+
+This was built in a sandboxed environment with **no internet access**
+and **no working Docker daemon** -- meaning:
+
+- **Nothing here has been run end-to-end.** Every route was written
+  carefully and reviewed by hand, and the full database schema (all 13
+  tables, every constraint) was validated against a real local
+  PostgreSQL instance -- including waitlist ordering, the atomic
+  slot-booking/override logic, PM-scoped data isolation, and the SLA
+  overdue query -- but the Flask/SQLAlchemy/OCR/PDF code itself has
+  never actually been executed. **Please do a full click-through test
+  (the sections above) before relying on this.**
+- **Docker build is unverified.** The `Dockerfile` and
+  `docker-compose.yml` are written to standard, well-established
+  patterns, but `docker build` was never run here (no working daemon in
+  this environment) -- the first `docker compose up --build` on your
+  machine is also the first real build.
+- **OCR/PDF libraries are untested.** `pytesseract`, `Pillow`, and
+  `reportlab` couldn't be installed in this sandbox either (same
+  no-internet issue) -- the PDF layout math was manually checked against
+  page dimensions to make sure nothing runs off the page, but the actual
+  rendered PDF and OCR output haven't been visually inspected.
+
+None of this means it's likely broken -- the patterns used throughout
+are standard and the logic was checked as carefully as possible without
+being able to run it -- but "carefully reviewed" isn't the same
+assurance as "tested," and this system will hold real Social Security
+numbers and income data. Test thoroughly before using it for real
+applicants.
 
 ---
 
@@ -217,19 +391,23 @@ before real applicants use this.
 
 | File / folder | What it does |
 |---|---|
-| `docker-compose.yml` | Defines the two pieces that run together: the database and the web app. This is what `docker compose up` reads. |
-| `Dockerfile` | Instructions for building the web app's container. |
-| `.env` (you create this) | Your real passwords and settings. Never uploaded to GitHub. |
-| `.env.example` | The template `.env` is copied from. |
-| `run.py` | Starts the app -- what the web container actually runs. |
-| `tenant_app/__init__.py` | Assembles the app: database, login system, and all the pages. |
-| `tenant_app/models.py` | The database structure: Users, Properties, Units, Applications, Inspection Slots/Photos, and who's assigned to what. |
-| `tenant_app/auth.py` | Login/logout, and the rules for who can see admin pages vs. property-manager pages. |
-| `tenant_app/routes_admin.py` | Admin-only pages. |
-| `tenant_app/routes_pm.py` | Property-manager portal pages. |
-| `tenant_app/routes_public.py` | The public application form and status page -- no login. |
-| `tenant_app/seed.py` | Creates the database tables and sample data the first time the app runs. |
-| `tenant_app/mail.py` | Sends the applicant-decision email, if turned on. |
-| `tenant_app/config.py` | Reads your `.env` settings -- you shouldn't need to edit this file directly. |
-| `tenant_app/templates/` | The actual page layouts (HTML). |
-| `tenant_app/static/style.css` | Makes the pages look presentable. |
+| `docker-compose.yml` | Defines the two containers (database + web app) that run together. |
+| `Dockerfile` | Builds the web app's container, including installing Tesseract. |
+| `.env` (you create this) | Your real passwords, keys, and settings. Never uploaded to GitHub. |
+| `run.py` | Starts the app -- what the web container runs. |
+| `tenant_app/__init__.py` | Assembles the app: database, login system, all pages, protected file-serving. |
+| `tenant_app/models.py` | The full database structure -- read the module docstring for the application lifecycle. |
+| `tenant_app/crypto.py` | SSN encryption/decryption and masking. |
+| `tenant_app/auth.py` | Login/logout and role-based access rules. |
+| `tenant_app/routes_admin.py` | Admin pages: dashboard, properties, units, waitlist, PM accounts, inspection slots, SLA tools, decisions. |
+| `tenant_app/routes_pm.py` | Property-manager portal: dashboard, photo upload, inspection scoring form. |
+| `tenant_app/routes_intake.py` | The paper-application upload/OCR/review/save flow. |
+| `tenant_app/routes_public.py` | The public "how to apply" page, PDF download, and status check -- no login. |
+| `tenant_app/ocr.py` | Reads text off a scanned form with Tesseract. |
+| `tenant_app/pdf_form.py` | Generates the printable paper application. |
+| `tenant_app/sla.py` | The 5-day inspection countdown/reminder/escalation logic. |
+| `tenant_app/mail.py` | All outbound email, and the notification audit log. |
+| `tenant_app/seed.py` | Creates tables and sample data the first time the app runs. |
+| `tenant_app/config.py` | Reads your `.env` settings. |
+| `tenant_app/templates/` | Page layouts (HTML). |
+| `tenant_app/static/style.css` | Styling. |

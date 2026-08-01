@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ property.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <a href="{{ url_for('admin.properties') }}">&larr; Back to all properties</a>
+    <span>
+      <a href="{{ url_for('admin.dashboard') }}">Dashboard</a> ·
+      <a href="{{ url_for('auth.logout') }}">Log out</a>
+    </span>
+  </div>
+  <div class="page wide">
+    <h1>{{ property.name }}</h1>
+    <p class="subtitle">{{ property.address }}
+      {% if property.manager_email %} · {{ property.manager_email }}{% endif %}
+      {% if property.manager_phone %} · {{ property.manager_phone }}{% endif %}
+    </p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}<div class="notice">{{ message }}</div>{% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="card">
+      <legend>Units ({{ property.vacant_unit_count }} vacant of {{ property.units|length }})</legend>
+      <table>
+        <thead><tr><th>Unit</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          {% for unit in property.units %}
+            <tr>
+              <td>{{ unit.unit_number }}</td>
+              <td><span class="status {{ 'active' if unit.status == 'vacant' else 'pending' }}">{{ unit.status }}</span></td>
+              <td>
+                <form method="post" action="{{ url_for('admin.toggle_unit', property_id=property.id, unit_id=unit.id) }}">
+                  <button type="submit" style="margin:0; padding:4px 10px; font-size:0.85rem;">
+                    Mark {{ 'Occupied' if unit.status == 'vacant' else 'Vacant' }}
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="3">No units added yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <form method="post" action="{{ url_for('admin.add_unit', property_id=property.id) }}" style="margin-top:16px; display:flex; gap:8px; align-items:flex-end;">
+        <div style="flex:1;">
+          <label for="unit_number">Add a Unit</label>
+          <input type="text" id="unit_number" name="unit_number" placeholder="Unit number">
+        </div>
+        <button type="submit">Add</button>
+      </form>
+    </div>
+
+    {% if waitlist %}
+      <div class="card">
+        <legend>Waitlist ({{ waitlist|length }}), in order</legend>
+        <table>
+          <thead><tr><th>#</th><th>Applicant</th><th>Submitted</th><th>Prioritized</th><th></th></tr></thead>
+          <tbody>
+            {% for application in waitlist %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td><a href="{{ url_for('admin.application_detail', application_id=application.id) }}">{{ application.full_name }} (#{{ application.id }})</a></td>
+                <td>{{ application.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ 'Yes' if application.waitlist_prioritized else '—' }}</td>
+                <td>
+                  {% if property.vacant_unit_count > 0 %}
+                    <form method="post" action="{{ url_for('admin.advance_waitlist', property_id=property.id, application_id=application.id) }}" style="display:flex; gap:6px;">
+                      <input type="text" name="reason" placeholder="Reason (required)" style="width:160px; margin:0; padding:6px;" required>
+                      <button type="submit" style="margin:0; padding:6px 10px; font-size:0.85rem;">Move to Active</button>
+                    </form>
+                  {% elif not application.waitlist_prioritized %}
+                    <form method="post" action="{{ url_for('admin.prioritize_waitlist', property_id=property.id, application_id=application.id) }}" style="display:flex; gap:6px;">
+                      <input type="text" name="reason" placeholder="Reason (required)" style="width:160px; margin:0; padding:6px;" required>
+                      <button type="submit" style="margin:0; padding:6px 10px; font-size:0.85rem;">Prioritize</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if property.vacant_unit_count > 0 %}
+          <p class="subtitle" style="margin-top:12px; margin-bottom:0;">
+            A unit is vacant here -- the top of the waitlist is highlighted above. Moving someone off the
+            waitlist always requires a reason, which is logged for compliance.
+          </p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if active_inspections %}
+      <div class="card">
+        <legend>Active Inspections</legend>
+        <table>
+          <thead><tr><th>Applicant</th><th>Status</th><th>Days Left</th></tr></thead>
+          <tbody>
+            {% for application in active_inspections %}
+              <tr onclick="window.location='{{ url_for('admin.application_detail', application_id=application.id) }}'" style="cursor:pointer;">
+                <td>{{ application.full_name }} (#{{ application.id }})</td>
+                <td>{{ application.inspection_status }}</td>
+                <td>
+                  {% set days_left = application.inspection_days_left %}
+                  <span class="countdown {{ 'danger' if days_left is not none and days_left <= 0 else ('warning' if days_left is not none and days_left <= 1 else '') }}">
+                    {{ days_left if days_left is not none and days_left > 0 else 'OVERDUE' }}
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <legend>All Applications ({{ applications|length }})</legend>
+      <table>
+        <thead><tr><th>#</th><th>Applicant</th><th>Submitted</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for application in applications %}
+            <tr onclick="window.location='{{ url_for('admin.application_detail', application_id=application.id) }}'" style="cursor:pointer;">
+              <td>{{ application.id }}</td>
+              <td>{{ application.full_name }}</td>
+              <td>{{ application.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td><span class="status {{ application.status_css_class }}">{{ application.status }}</span></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4">No applications yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

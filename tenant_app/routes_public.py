@@ -1,12 +1,15 @@
 """
-Public pages -- no login. The application form, its confirmation page,
-and the applicant self-service status/inspection-booking page.
+Public pages -- no login. An informational page explaining how to apply
+(the printable PDF, per Phase 2 -- applications are paper-first now, no
+more direct online self-entry), and the applicant self-service
+status/inspection-booking page.
 """
-from flask import Blueprint, redirect, render_template, request, url_for
+from flask import Blueprint, redirect, render_template, request, send_file, url_for
 from sqlalchemy import update
 
 from tenant_app.extensions import db
 from tenant_app.models import Application, InspectionSlot, Property
+from tenant_app.pdf_form import generate_application_pdf
 
 public_bp = Blueprint("public", __name__)
 
@@ -16,62 +19,18 @@ def index():
     return redirect(url_for("public.apply"))
 
 
-@public_bp.route("/apply", methods=["GET", "POST"])
+@public_bp.route("/apply")
 def apply():
     properties = Property.query.order_by(Property.name).all()
-
-    if request.method == "POST":
-        errors = []
-        property_id = request.form.get("property_id", "").strip()
-        full_name = request.form.get("full_name", "").strip()
-        phone = request.form.get("phone", "").strip()
-        email = request.form.get("email", "").strip()
-        current_address = request.form.get("current_address", "").strip()
-        marital_status = request.form.get("marital_status", "").strip()
-        number_of_children = request.form.get("number_of_children", "").strip()
-
-        valid_property_ids = {str(p.id) for p in properties}
-        if not property_id:
-            errors.append("Please choose a property.")
-        elif property_id not in valid_property_ids:
-            errors.append("Please choose a valid property from the list.")
-        if not full_name:
-            errors.append("Please enter your full name.")
-        if not phone:
-            errors.append("Please enter your phone number.")
-        if not email:
-            errors.append("Please enter your email address.")
-        if not current_address:
-            errors.append("Please enter your current address.")
-
-        children_value = None
-        if number_of_children:
-            try:
-                children_value = int(number_of_children)
-            except ValueError:
-                errors.append("Number of children must be a whole number.")
-
-        if errors:
-            return render_template("apply.html", properties=properties, errors=errors, form=request.form)
-
-        application = Application(
-            property_id=int(property_id), full_name=full_name, phone=phone, email=email,
-            current_address=current_address, marital_status=marital_status or None,
-            number_of_children=children_value,
-        )
-        db.session.add(application)
-        db.session.commit()
-        return redirect(url_for("public.confirmation", application_id=application.id))
-
-    return render_template("apply.html", properties=properties, errors=[], form={})
+    return render_template("apply.html", properties=properties)
 
 
-@public_bp.route("/confirmation/<int:application_id>")
-def confirmation(application_id):
-    application = Application.query.get(application_id)
-    if application is None:
-        return redirect(url_for("public.apply"))
-    return render_template("confirmation.html", application=application)
+@public_bp.route("/apply/form.pdf")
+def application_pdf():
+    return send_file(
+        generate_application_pdf(), mimetype="application/pdf",
+        as_attachment=False, download_name="affordable-housing-application.pdf",
+    )
 
 
 def _find_application(reference, email):
@@ -122,7 +81,7 @@ def check_status():
                         error = "Sorry, that time slot was just taken. Please pick another."
 
                 my_slot = InspectionSlot.query.filter_by(application_id=application.id).first()
-                if my_slot is None and application.status != "Denied":
+                if my_slot is None and application.status not in ("Denied", "Approved"):
                     open_slots = (
                         InspectionSlot.query.filter_by(application_id=None)
                         .order_by(InspectionSlot.slot_time)

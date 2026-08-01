@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Review Scanned Application</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <a href="{{ url_for('admin.dashboard') if current_user.is_admin else url_for('pm.dashboard') }}">&larr; Back</a>
+    <a href="{{ url_for('auth.logout') }}">Log out</a>
+  </div>
+  <div class="page wide">
+    <h1>Review Before Saving</h1>
+    <p class="subtitle">
+      Compare the scanned form on the left with the fields on the right. OCR is a
+      rough first guess and will have mistakes, especially on handwriting -- fix
+      anything wrong before saving. Nothing is saved until you submit this screen.
+    </p>
+
+    {% if errors %}
+      <div class="errors">
+        <ul style="margin:0; padding-left:18px;">
+          {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <div class="intake-grid">
+      <div class="card intake-image-pane">
+        {% if image_url %}
+          <img src="{{ image_url }}" alt="Scanned application" style="max-width:100%; border-radius:8px;">
+        {% else %}
+          <p>Scan not available -- please upload it again.</p>
+        {% endif %}
+
+        <details style="margin-top:16px;">
+          <summary>Raw OCR text (for reference only)</summary>
+          <pre style="white-space:pre-wrap; font-size:0.85rem; background:#f7f8fb; padding:10px; border-radius:6px;">{{ raw_text }}</pre>
+        </details>
+      </div>
+
+      <form class="card" method="post" action="{{ url_for('intake.create') }}">
+        <input type="hidden" name="temp_filename" value="{{ temp_filename }}">
+        <input type="hidden" name="raw_text" value="{{ raw_text }}">
+
+        <fieldset>
+          <legend>Property</legend>
+          <label for="property_id">Which property is this application for?</label>
+          <select id="property_id" name="property_id" required>
+            <option value="" disabled {% if not form.get('property_id') and not guessed_property_id %}selected{% endif %}>Select a property...</option>
+            {% for property in properties %}
+              {% set selected_id = form.get('property_id')|string if form.get('property_id') else guessed_property_id|string %}
+              <option value="{{ property.id }}" {% if selected_id == property.id|string %}selected{% endif %}>
+                {{ property.name }} — {{ property.address }}
+              </option>
+            {% endfor %}
+          </select>
+          {% if guessed_property_id and not form.get('property_id') %}
+            <p class="subtitle" style="margin:4px 0 0;">OCR's best guess is pre-selected -- double check it.</p>
+          {% endif %}
+        </fieldset>
+
+        <fieldset>
+          <legend>Applicant</legend>
+          <label for="full_name">Full Legal Name</label>
+          <input type="text" id="full_name" name="full_name" value="{{ form.get('full_name', '') }}" required>
+
+          <label for="date_of_birth">Date of Birth</label>
+          <input type="date" id="date_of_birth" name="date_of_birth" value="{{ form.get('date_of_birth', '') }}">
+
+          <label for="ssn">Social Security Number</label>
+          <input type="text" id="ssn" name="ssn" value="{{ form.get('ssn', '') }}" placeholder="XXX-XX-XXXX">
+          <p class="subtitle" style="margin:4px 0 0;">Stored encrypted. Never shown in full anywhere in this system.</p>
+
+          <label for="phone">Phone</label>
+          <input type="tel" id="phone" name="phone" value="{{ form.get('phone', '') }}" required>
+
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" value="{{ form.get('email', '') }}" required>
+
+          <label for="current_address">Current Address</label>
+          <input type="text" id="current_address" name="current_address" value="{{ form.get('current_address', '') }}" required>
+
+          <label for="marital_status">Marital Status</label>
+          <select id="marital_status" name="marital_status">
+            <option value="" {% if not form.get('marital_status') %}selected{% endif %}>Prefer not to say</option>
+            {% for option in ['Single', 'Married', 'Divorced', 'Widowed'] %}
+              <option value="{{ option }}" {% if form.get('marital_status') == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+
+          <label for="number_of_children">Number of Dependents</label>
+          <input type="number" id="number_of_children" name="number_of_children" min="0" step="1" value="{{ form.get('number_of_children', '') }}">
+        </fieldset>
+
+        <fieldset>
+          <legend>Employment &amp; Income</legend>
+          <label for="employer_name">Employer Name</label>
+          <input type="text" id="employer_name" name="employer_name" value="{{ form.get('employer_name', '') }}">
+
+          <label for="employer_contact">Employer Phone</label>
+          <input type="tel" id="employer_contact" name="employer_contact" value="{{ form.get('employer_contact', '') }}">
+
+          <label for="income_employment">Monthly Employment Income ($)</label>
+          <input type="number" id="income_employment" name="income_employment" min="0" step="0.01" value="{{ form.get('income_employment', '') }}">
+
+          <label for="income_benefits">Monthly Benefits Income ($)</label>
+          <input type="number" id="income_benefits" name="income_benefits" min="0" step="0.01" value="{{ form.get('income_benefits', '') }}">
+
+          <label for="income_other">Monthly Other Income ($)</label>
+          <input type="number" id="income_other" name="income_other" min="0" step="0.01" value="{{ form.get('income_other', '') }}">
+        </fieldset>
+
+        <fieldset>
+          <legend>Household Members (other than applicant)</legend>
+          {% for i in household_rows %}
+            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px; margin-top:{{ '14px' if i == 0 else '8px' }};">
+              <input type="text" name="household_name_{{ i }}" placeholder="Name" value="{{ form.get('household_name_' ~ i, '') }}">
+              <input type="date" name="household_dob_{{ i }}" value="{{ form.get('household_dob_' ~ i, '') }}">
+              <input type="text" name="household_relationship_{{ i }}" placeholder="Relationship" value="{{ form.get('household_relationship_' ~ i, '') }}">
+            </div>
+          {% endfor %}
+        </fieldset>
+
+        <fieldset>
+          <legend>Consent</legend>
+          <label for="signature_name">Printed Name on Signature Line</label>
+          <input type="text" id="signature_name" name="signature_name" value="{{ form.get('signature_name', '') }}">
+
+          <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:14px;">
+            <input type="checkbox" id="consent_given" name="consent_given"
+              {% if form.get('consent_given') == 'on' %}checked{% endif %}>
+            The paper form is signed and dated by the applicant.
+          </label>
+        </fieldset>
+
+        <button type="submit">Save Application</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

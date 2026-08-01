@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Testing Tools</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <a href="{{ url_for('admin.dashboard') }}">&larr; Back to dashboard</a>
+    <a href="{{ url_for('auth.logout') }}">Log out</a>
+  </div>
+  <div class="page">
+    <h1>Testing Tools</h1>
+    <p class="subtitle">
+      For trying out the inspection SLA without waiting 5 real days. Not meant for
+      day-to-day use -- this backdates an application's inspection clock.
+    </p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}<div class="notice">{{ message }}</div>{% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form class="card" method="post" action="{{ url_for('admin.testing_tools') }}">
+      <label for="application_id">Application Number</label>
+      <select id="application_id" name="application_id" required>
+        <option value="" disabled selected>Select an application in "Approved for inspection"...</option>
+        {% for application in applications %}
+          <option value="{{ application.id }}">#{{ application.id }} — {{ application.full_name }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="days_ago">Make the inspection clock this many days old</label>
+      <input type="number" id="days_ago" name="days_ago" min="0" max="30" value="5">
+
+      <button type="submit">Set Clock</button>
+    </form>
+
+    <div class="card">
+      <legend>Then...</legend>
+      <p>Go to <a href="{{ url_for('admin.inspections') }}">Inspection Slots</a> and click
+        "Run SLA Check Now" to trigger the reminder/overdue logic immediately, instead of
+        waiting for it to run automatically on the next dashboard visit.</p>
+    </div>
+  </div>
+</body>
+</html>
