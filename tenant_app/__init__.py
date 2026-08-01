@@ -3,7 +3,7 @@ import os
 from flask import Flask, send_from_directory
 from flask_login import login_required
 
-from tenant_app import config
+from tenant_app import config, scheduler
 from tenant_app.extensions import db, login_manager
 
 
@@ -33,5 +33,7 @@ def create_app():
     @login_required
     def uploaded_file(filename):
         return send_from_directory(os.path.join(app.instance_path, "uploads"), filename)
+
+    scheduler.start(app)
 
     return app

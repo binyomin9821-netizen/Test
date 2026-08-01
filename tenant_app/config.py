@@ -34,3 +34,9 @@ EMAIL_ENABLED = os.environ.get("EMAIL_ENABLED", "false").lower() == "true"
 EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS", "you@gmail.com")
 EMAIL_APP_PASSWORD = os.environ.get("EMAIL_APP_PASSWORD", "")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Housing Applications")
+
+# Runs the inspection SLA check (reminders/escalation) on a real hourly
+# clock in the background, in addition to it running opportunistically
+# on dashboard loads. Leave this on unless you're running a one-off
+# script that imports the app and don't want a background thread started.
+ENABLE_SCHEDULER = os.environ.get("ENABLE_SCHEDULER", "true").lower() == "true"

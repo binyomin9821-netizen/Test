@@ -3,17 +3,18 @@ The Phase 4 inspection SLA check: sends a daily reminder to whoever's
 assigned PM for each pending inspection, and escalates to the admin and
 that PM's supervisor once 5 calendar days have passed.
 
-There's no real task scheduler wired up in this pass (that'd mean
-another Docker service -- a cron container, or Celery+Redis -- which is
-more infrastructure than this stage needs). Instead, `run_sla_check()`
-is called opportunistically:
-  - Automatically, at most once an hour, whenever the admin or PM
-    dashboard loads (see routes_admin.py / routes_pm.py).
+`run_sla_check()` runs on three triggers, all safe to overlap thanks to
+the per-application/per-notification-type check against NotificationLog
+(never sends the same reminder/escalation twice in the same day):
+  - On a real hourly clock, via tenant_app/scheduler.py (APScheduler,
+    runs in the background inside the web process -- no extra Docker
+    service needed).
+  - Opportunistically, at most once an hour, whenever the admin or PM
+    dashboard loads (see routes_admin.py / routes_pm.py) -- redundant
+    with the scheduler now, but harmless and gives an instant feel while
+    actively using the app.
   - On demand, via the "Run SLA Check Now" button on the admin
     Inspection Slots page.
-This is fine for a pilot but isn't a substitute for a real scheduled job
-once this runs in production continuously -- flagging that here so it
-isn't a surprise later.
 """
 from datetime import datetime, timedelta, timezone
 

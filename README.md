@@ -95,14 +95,17 @@ later and already have real data, you'll need to either add a migration
 tool at that point or write the `ALTER TABLE` yourself -- `db.create_all()`
 only creates tables that don't exist yet, it won't update existing ones.
 
-**No real task scheduler.** The 5-day inspection SLA check
-(reminders/escalation) isn't running on a cron job -- it runs
-automatically, at most once an hour, whenever the admin or PM dashboard
-loads, plus on-demand via "Run SLA Check Now" on the Inspection Slots
-page. That's fine for a pilot with people checking in during the day,
-but isn't a substitute for a real scheduled job (a cron container, or
-Celery beat) if this needs to catch overdue inspections reliably even
-when nobody's logged in for a while.
+**The inspection SLA check now runs on a real hourly clock**
+(`tenant_app/scheduler.py`, via APScheduler), in the background inside
+the web container -- no separate cron container, Redis, or Celery
+needed. It catches overdue inspections even if nobody's logged in. It
+also still runs opportunistically on dashboard loads and on-demand via
+"Run SLA Check Now" -- all three are safe to overlap, since the
+per-application/per-day check against the notification log prevents any
+duplicate reminders or escalations regardless of how many times the
+check itself runs. If this app ever runs behind multiple web worker
+processes, a dedicated single scheduler process would be the cleaner
+design instead -- see the comment at the top of `scheduler.py`.
 
 ---
 
@@ -372,11 +375,12 @@ and **no working Docker daemon** -- meaning:
   patterns, but `docker build` was never run here (no working daemon in
   this environment) -- the first `docker compose up --build` on your
   machine is also the first real build.
-- **OCR/PDF libraries are untested.** `pytesseract`, `Pillow`, and
-  `reportlab` couldn't be installed in this sandbox either (same
-  no-internet issue) -- the PDF layout math was manually checked against
-  page dimensions to make sure nothing runs off the page, but the actual
-  rendered PDF and OCR output haven't been visually inspected.
+- **OCR/PDF/scheduler libraries are untested.** `pytesseract`, `Pillow`,
+  `reportlab`, and `APScheduler` couldn't be installed in this sandbox
+  either (same no-internet issue) -- the PDF layout math was manually
+  checked against page dimensions to make sure nothing runs off the
+  page, but the actual rendered PDF, OCR output, and the background
+  scheduler thread haven't been observed running.
 
 None of this means it's likely broken -- the patterns used throughout
 are standard and the logic was checked as carefully as possible without
@@ -406,6 +410,7 @@ applicants.
 | `tenant_app/ocr.py` | Reads text off a scanned form with Tesseract. |
 | `tenant_app/pdf_form.py` | Generates the printable paper application. |
 | `tenant_app/sla.py` | The 5-day inspection countdown/reminder/escalation logic. |
+| `tenant_app/scheduler.py` | Runs the SLA check on a real hourly clock in the background. |
 | `tenant_app/mail.py` | All outbound email, and the notification audit log. |
 | `tenant_app/seed.py` | Creates tables and sample data the first time the app runs. |
 | `tenant_app/config.py` | Reads your `.env` settings. |
