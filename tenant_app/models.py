@@ -203,22 +203,13 @@ class Application(db.Model):
     inspection_status = db.Column(db.String(20))  # 'Scheduled' / 'Completed' / 'Overdue'
     inspection_requested_at = db.Column(db.DateTime(timezone=True))
 
-    property = db.relationship("Property", back_populates="applications")
-    household_members = db.relationship(
-        "HouseholdMember", back_populates="application", cascade="all, delete-orphan",
-        order_by="HouseholdMember.id",
-    )
-    inspection_slot = db.relationship(
-        "InspectionSlot", back_populates="application", uselist=False
-    )
-    inspection_photos = db.relationship(
-        "InspectionPhoto", back_populates="application", cascade="all, delete-orphan",
-        order_by="InspectionPhoto.uploaded_at",
-    )
-    inspection_submission = db.relationship(
-        "InspectionSubmission", back_populates="application", uselist=False,
-        cascade="all, delete-orphan",
-    )
+    # NOTE: every @property below must stay ABOVE the `property =
+    # db.relationship(...)` line further down. Assigning to a name
+    # `property` inside a class body shadows Python's built-in
+    # `property` decorator for the rest of that class body -- any
+    # `@property` written after that line silently breaks (it decorates
+    # with a SQLAlchemy relationship object instead of the real thing,
+    # and the class fails to import at all). Found this the hard way.
 
     @property
     def ssn(self):
@@ -258,6 +249,23 @@ class Application(db.Model):
         if elapsed is None:
             return None
         return 5 - elapsed
+
+    property = db.relationship("Property", back_populates="applications")
+    household_members = db.relationship(
+        "HouseholdMember", back_populates="application", cascade="all, delete-orphan",
+        order_by="HouseholdMember.id",
+    )
+    inspection_slot = db.relationship(
+        "InspectionSlot", back_populates="application", uselist=False
+    )
+    inspection_photos = db.relationship(
+        "InspectionPhoto", back_populates="application", cascade="all, delete-orphan",
+        order_by="InspectionPhoto.uploaded_at",
+    )
+    inspection_submission = db.relationship(
+        "InspectionSubmission", back_populates="application", uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self):
         return f"<Application {self.id} {self.full_name} ({self.status})>"
